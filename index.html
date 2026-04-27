@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MCGG Builder - Ultimate Mobile v21</title>
+    <script src="https://bernardo-castilho.github.io/dragdroptouch/DragDropTouch.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { touch-action: pan-y; background-color: #020617; overflow-x: hidden; }
+        .board-slot { width: 100%; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; border: 2px dashed #4b5563; border-radius: 8px; background-color: rgba(31, 41, 55, 0.4); transition: all 0.3s ease; position: relative; }
+        .bench-slot { background-color: rgba(30, 41, 59, 0.8); border: 2px solid #334155; }
+        .board-slot.drag-over { border-color: #ffffff; background-color: rgba(255, 255, 255, 0.2); }
+        .hero-container { width: 95%; height: 95%; position: relative; touch-action: none; }
+        .hero-icon { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; cursor: grab; background-color: #1e293b; }
+        .pool-item { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; cursor: grab; border: 2px solid transparent; transition: all 0.2s; background-color: #1e293b; touch-action: none; }
+        
+        /* Glow Efek Rekomendasi */
+        .hero-rec-high { border: 3px solid #fbbf24 !important; box-shadow: 0 0 15px #fbbf24; transform: scale(1.05); z-index: 10; }
+        .hero-rec-mid { border: 2px solid #3b82f6 !important; box-shadow: 0 0 8px #3b82f6; }
+        
+        .category-section.priority-high { order: -2; background-color: rgba(16, 185, 129, 0.05); }
+        .category-section.priority-mid { order: -1; }
+        .category-section.dimmed { opacity: 0.2; filter: grayscale(1); order: 100; }
+        
+        .btn-lvlup { position: absolute; top: -10px; right: -10px; background: #10b981; color: white; width: 26px; height: 26px; border-radius: 50%; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 30; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        
+        #custom-tooltip { position: fixed; pointer-events: none; z-index: 1000; display: none; background: #0f172a; border: 1px solid #334155; padding: 10px; border-radius: 8px; color: white; font-size: 11px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        
+        .star-level { position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); display: flex; gap: 1px; pointer-events: none; }
+        .star { color: #fbbf24; text-shadow: 0 0 4px rgba(0,0,0,0.9); font-size: 9px; }
+        .max-level-glow { box-shadow: 0 0 15px #fbbf24; border: 3px solid #fbbf24 !important; }
+        
+        .contributor-icon { width: 18px; height: 18px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); object-fit: cover; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="text-slate-100 p-2 md:p-4 font-sans select-none">
+
+    <div id="custom-tooltip"></div>
+
+    <div class="max-w-[1600px] mx-auto">
+        <header class="mb-4 flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-xl">
+            <h1 class="text-lg font-black text-blue-400 uppercase tracking-tighter">MCGG <span class="text-amber-400">BUILDER v21</span></h1>
+            <div class="flex items-center gap-2">
+                <select id="cmd-lvl" onchange="renderPool()" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[10px] font-bold text-white outline-none">
+                    <option value="3">Lv.3</option><option value="4">Lv.4</option><option value="5" selected>Lv.5</option>
+                    <option value="6">Lv.6</option><option value="7">Lv.7</option><option value="8">Lv.8</option>
+                    <option value="9">Lv.9</option><option value="10">Lv.10</option>
+                </select>
+                <button onclick="clearBoard()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg font-black text-[10px] uppercase">Reset</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div class="lg:col-span-3 bg-slate-900 rounded-xl border border-slate-800 flex flex-col h-[400px] lg:h-[850px]">
+                <div class="p-3 border-b border-slate-800">
+                    <input type="text" id="searchHero" placeholder="Cari Hero..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs outline-none mb-2 text-white">
+                    <div class="flex p-1 bg-slate-950 rounded-lg border border-slate-800 text-[9px] font-bold">
+                        <button onclick="switchView('faction')" id="tab-faction" class="flex-1 py-2 rounded-md bg-blue-600 text-white">FACTION</button>
+                        <button onclick="switchView('role')" id="tab-role" class="flex-1 py-2 rounded-md text-slate-400 ml-1">ROLE</button>
+                    </div>
+                </div>
+                <div id="hero-pool" class="flex-1 overflow-y-auto p-2 flex flex-col space-y-2"></div>
+            </div>
+
+            <div class="lg:col-span-6 flex flex-col gap-4">
+                <div class="bg-slate-900 p-3 md:p-6 rounded-2xl border border-slate-800 shadow-2xl">
+                    <div id="board" class="grid grid-cols-7 gap-1.5 md:gap-3"></div>
+                </div>
+                <div class="bg-slate-900 p-3 rounded-2xl border border-slate-800 shadow-xl border-t-4 border-t-slate-700">
+                    <div id="bench" class="grid grid-cols-8 gap-1.5 md:gap-3"></div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 bg-slate-900 p-4 rounded-xl border border-slate-800 h-auto lg:h-[850px] overflow-y-auto">
+                <h2 class="text-sm font-black mb-4 uppercase border-b border-slate-800 pb-2 text-blue-400 tracking-widest">Sinergi Aktif</h2>
+                <div id="synergy-output" class="space-y-2 pb-10"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fixPath(path) { return encodeURI(path); }
+
+        const shopProb = {
+            3: [60, 30, 10, 0, 0], 4: [50, 35, 15, 0, 0], 5: [34, 35, 30, 1, 0],
+            6: [25, 30, 40, 5, 0], 7: [19, 28, 42, 10, 1], 8: [16, 26, 35, 18, 5],
+            9: [13, 22, 25, 26, 14], 10: [6, 12, 22, 35, 25]
+        };
+
+        const synergyConfig = {
+            "Beyond the Clouds": { hex: "#52dfec", icon: "icons/beyond.png", tiers: [2, 3] },
+            "Bruiser": { hex: "#39290b", icon: "icons/bruiser.png", tiers: [2, 4, 6] },
+            "Dauntless": { hex: "#ff8f70", icon: "icons/dauntless.png", tiers: [2, 4, 6] },
+            "Defender": { hex: "#683c16", icon: "icons/defender.png", tiers: [2, 4, 6] },
+            "Exorcist": { hex: "#fde05d", icon: "icons/exorcist.png", tiers: [2, 4, 6, 10] },
+            "Glory League": { hex: "#cbfffa", icon: "icons/glory.png", tiers: [2, 4, 6] },
+            "Heartbond": { hex: "#ff7def", icon: "icons/heartbond.png", tiers: [2, 4, 6, 10] },
+            "KOF": { hex: "#dc2c1b", icon: "icons/kof.png", tiers: [2, 4, 6, 11] },
+            "Luminexus": { hex: "#e6c2f4", icon: "icons/luminexus.png", tiers: [2, 4, 6, 10] },
+            "Mage": { hex: "#2892ff", icon: "icons/mage.png", tiers: [2, 4, 6] },
+            "Marksman": { hex: "#2892ff", icon: "icons/marksman.png", tiers: [2, 4, 6] },
+            "Mortal Rivals": { hex: "#ffca6b", icon: "icons/mortal.png", tiers: [1, 2] },
+            "Mystic Meow": { hex: "#ffca6b", icon: "icons/mystic.png", tiers: [2, 9, 11] },
+            "Neobeasts": { hex: "#c62e5f", icon: "icons/neobeasts.png", tiers: [2, 4, 6, 10] },
+            "Phasewarper": { hex: "#a7fdff", icon: "icons/phasewarper.png", tiers: [2, 3] },
+            "Scavenger": { hex: "#ffe29b", icon: "icons/scavanger.png", tiers: [2, 3] },
+            "Soul Vessels": { hex: "#582410", icon: "icons/soul.png", tiers: [2, 4, 6, 10] },
+            "Stargazer": { hex: "#af81ff", icon: "icons/stargazer.png", tiers: [2, 4, 6] },
+            "Swift blade": { hex: "#4d2463", icon: "icons/swiftblade.png", tiers: [2, 4, 6] },
+            "Toy Mischief": { hex: "#1b305a", icon: "icons/toy.png", tiers: [2, 4, 6, 10] },
+            "Weapon Master": { hex: "#d33432", icon: "icons/weapon.png", tiers: [2, 4, 6] }
+        };
+
+        const heroes = [
+            { id: 1, name: "Iori Yagami", faction: ["KOF", "Mortal Rivals"], role: ["Bruiser"], gold: 5, icon: "icons/iori.png" },
+            { id: 2, name: "Terry Bogard", faction: ["KOF"], role: ["Defender"], gold: 4, icon: "icons/terry.png" },
+            { id: 3, name: "Chris", faction: ["KOF"], role: ["Dauntless"], gold: 2, icon: "icons/chris.png" },
+            { id: 4, name: "Kula", faction: ["KOF"], role: ["Stargazer"], gold: 1, icon: "icons/kula.png" },
+            { id: 5, name: "K'", faction: ["KOF"], role: ["Swift blade"], gold: 4, icon: "icons/k.png" },
+            { id: 6, name: "Kyo Kusanagi", faction: ["KOF", "Mortal Rivals"], role: ["Mage"], gold: 5, icon: "icons/kyo.png" },
+            { id: 7, name: "Leona", faction: ["KOF"], role: ["Scavenger"], gold: 3, icon: "icons/leona.png" },
+            { id: 8, name: "Gloo", faction: ["Soul Vessels"], role: ["Dauntless"], gold: 3, icon: "icons/gloo.png" },
+            { id: 9, name: "Benedetta", faction: ["Soul Vessels"], role: ["Weapon Master"], gold: 5, icon: "icons/benedetta.png" },
+            { id: 10, name: "Hanabi", faction: ["Soul Vessels"], role: ["Marksman"], gold: 4, icon: "icons/hanabi.png" },
+            { id: 11, name: "Aamon", faction: ["Soul Vessels"], role: ["Swift blade"], gold: 2, icon: "icons/aamon.png" },
+            { id: 12, name: "Cecilion", faction: ["Soul Vessels"], role: ["Mage"], gold: 1, icon: "icons/cecilion.png" },
+            { id: 13, name: "Clint", faction: ["Soul Vessels"], role: ["Phasewarper"], gold: 2, icon: "icons/clint.png" },
+            { id: 14, name: "Miya", faction: ["Heartbond"], role: ["Marksman"], gold: 3, icon: "icons/miya.png" },
+            { id: 15, name: "Odette", faction: ["Heartbond"], role: ["Stargazer"], gold: 2, icon: "icons/odette.png" },
+            { id: 16, name: "Lancelot", faction: ["Heartbond"], role: ["Phasewarper"], gold: 5, icon: "icons/lancelot.png" },
+            { id: 17, name: "Khufra", faction: ["Heartbond"], role: ["Defender"], gold: 3, icon: "icons/khufra.png" },
+            { id: 18, name: "Esmeralda", faction: ["Heartbond"], role: ["Dauntless"], gold: 4, icon: "icons/esmeralda.png" },
+            { id: 19, name: "Alucard", faction: ["Heartbond"], role: ["Weapon Master"], gold: 1, icon: "icons/alucard.png" },
+            { id: 20, name: "Masha", faction: ["Luminexus"], role: ["Bruiser"], gold: 3, icon: "icons/masha.png" },
+            { id: 21, name: "Cici", faction: ["Luminexus"], role: ["Weapon Master"], gold: 2, icon: "icons/cici.png" },
+            { id: 22, name: "Rafaela", faction: ["Luminexus"], role: ["Stargazer"], gold: 5, icon: "icons/rafaela.png" },
+            { id: 23, name: "Nolan", faction: ["Luminexus"], role: ["Swift blade"], gold: 1, icon: "icons/nolan.png" },
+            { id: 24, name: "Valentina", faction: ["Luminexus"], role: ["Mage"], gold: 4, icon: "icons/valentina.png" },
+            { id: 25, name: "Floryn", faction: ["Luminexus"], role: ["Scavenger"], gold: 4, icon: "icons/floryn.png" },
+            { id: 26, name: "Yu Zhong", faction: ["Exorcist"], role: ["Bruiser"], gold: 4, icon: "icons/yuzhong.png" },
+            { id: 27, name: "Ruby", faction: ["Exorcist"], role: ["Dauntless"], gold: 5, icon: "icons/ruby.png" },
+            { id: 28, name: "Granger", faction: ["Exorcist"], role: ["Marksman"], gold: 2, icon: "icons/granger.png" },
+            { id: 29, name: "Saber", faction: ["Exorcist"], role: ["Swift blade"], gold: 3, icon: "icons/saber.png" },
+            { id: 30, name: "Hayabusa", faction: ["Exorcist"], role: ["Phasewarper"], gold: 4, icon: "icons/hayabusa.png" },
+            { id: 31, name: "Phoveus", faction: ["Exorcist"], role: ["Scavenger"], gold: 1, icon: "icons/phoveus.png" },
+            { id: 32, name: "Gatotkaca", faction: ["Neobeasts"], role: ["Bruiser", "Defender"], gold: 2, icon: "icons/gatotkaca.png" },
+            { id: 33, name: "Fredrinn", faction: ["Neobeasts"], role: ["Weapon Master"], gold: 3, icon: "icons/fredrinn.png" },
+            { id: 34, name: "Brody", faction: ["Neobeasts"], role: ["Marksman"], gold: 1, icon: "icons/brody.png" },
+            { id: 35, name: "Pharsa", faction: ["Neobeasts"], role: ["Stargazer"], gold: 4, icon: "icons/pharsa.png" },
+            { id: 36, name: "Ling", faction: ["Neobeasts"], role: ["Swift blade"], gold: 5, icon: "icons/ling.png" },
+            { id: 37, name: "Lylia", faction: ["Neobeasts"], role: ["Mage"], gold: 2, icon: "icons/lylia.png" },
+            { id: 38, name: "Jawhead", faction: ["Toy Mischief"], role: ["Bruiser"], gold: 1, icon: "icons/jawhead.png" },
+            { id: 39, name: "Uranus", faction: ["Toy Mischief"], role: ["Defender"], gold: 2, icon: "icons/uranus.png" },
+            { id: 40, name: "Barats", faction: ["Toy Mischief"], role: ["Dauntless"], gold: 4, icon: "icons/barats.png" },
+            { id: 41, name: "Aulus", faction: ["Toy Mischief"], role: ["Weapon Master"], gold: 3, icon: "icons/aulus.png" },
+            { id: 42, name: "Cyclops", faction: ["Toy Mischief"], role: ["Stargazer"], gold: 4, icon: "icons/cyclops.png" },
+            { id: 43, name: "Harith", faction: ["Toy Mischief"], role: ["Mage"], gold: 3, icon: "icons/harith.png" },
+            { id: 44, name: "Aldous", faction: ["Glory League"], role: ["Bruiser"], gold: 2, icon: "icons/aldous.png" },
+            { id: 45, name: "Minotaur", faction: ["Glory League"], role: ["Defender"], gold: 3, icon: "icons/minotaur.png" },
+            { id: 46, name: "Roger", faction: ["Glory League"], role: ["Weapon Master"], gold: 4, icon: "icons/roger.png" },
+            { id: 47, name: "Beatrix", faction: ["Glory League"], role: ["Marksman"], gold: 2, icon: "icons/beatrix.png" },
+            { id: 48, name: "Silvanna", faction: ["Mystic Meow"], role: ["Dauntless"], gold: 1, icon: "icons/silvanna.png" },
+            { id: 49, name: "Lesley", faction: ["Mystic Meow"], role: ["Marksman"], gold: 5, icon: "icons/lesley.png" },
+            { id: 50, name: "Julian", faction: ["Mystic Meow"], role: ["Mage", "Phasewarper"], gold: 3, icon: "icons/julian.png" },
+            { id: 51, name: "Edith", faction: ["Beyond the Clouds"], role: ["Defender"], gold: 5, icon: "icons/edith.png" },
+            { id: 52, name: "Xavier", faction: ["Beyond the Clouds"], role: ["Stargazer"], gold: 3, icon: "icons/xavier.png" },
+            { id: 53, name: "Natalia", faction: ["Beyond the Clouds"], role: ["Swift blade"], gold: 2, icon: "icons/natalia.png" }
+        ];
+
+        let boardState = Array(21).fill(null), benchState = Array(8).fill(null);
+        let draggedFrom = null, currentView = 'faction', currentBoardCounts = {};
+
+        const tooltip = document.getElementById('custom-tooltip');
+
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('tab-faction').className = view === 'faction' ? 'flex-1 py-2 rounded-md bg-blue-600 text-white transition' : 'flex-1 py-2 rounded-md text-slate-400';
+            document.getElementById('tab-role').className = view === 'role' ? 'flex-1 py-2 rounded-md bg-blue-600 text-white transition' : 'flex-1 py-2 rounded-md text-slate-400 ml-1';
+            renderPool();
+        }
+
+        function initGrid(id, size, className) {
+            const el = document.getElementById(id);
+            for (let i = 0; i < size; i++) {
+                const slot = document.createElement('div');
+                slot.className = className; slot.dataset.index = i; slot.dataset.type = id;
+                slot.ondragover = (e) => { e.preventDefault(); slot.classList.add('drag-over'); };
+                slot.ondragleave = () => slot.classList.remove('drag-over');
+                slot.ondrop = handleDrop;
+                slot.onclick = (e) => { if (!e.target.classList.contains('btn-lvlup')) removeHero(id, i); };
+                el.appendChild(slot);
+            }
+        }
+        initGrid('board', 21, 'board-slot');
+        initGrid('bench', 8, 'board-slot bench-slot');
+
+        function renderPool() {
+            const poolEl = document.getElementById('hero-pool'); poolEl.innerHTML = "";
+            const searchVal = document.getElementById('searchHero').value.toLowerCase();
+            const cmdLvl = document.getElementById('cmd-lvl').value;
+            const probs = shopProb[cmdLvl];
+            const categories = [...new Set(heroes.flatMap(h => currentView === 'faction' ? h.faction : h.role))].sort();
+
+            categories.forEach(cat => {
+                const heroesInCat = heroes.filter(h => (currentView === 'faction' ? h.faction.includes(cat) : h.role.includes(cat)) && h.name.toLowerCase().includes(searchVal));
+                if (heroesInCat.length === 0) return;
+
+                const processed = heroesInCat.map(hero => {
+                    let gainNames = [];
+                    [...hero.faction, ...hero.role].forEach(s => { if (currentBoardCounts[s]) gainNames.push(s); });
+                    let prob = probs[hero.gold - 1] || 0;
+                    let score = (gainNames.length * 1000) + prob;
+                    return { ...hero, gainNames, prob, score };
+                }).sort((a, b) => b.score - a.score);
+
+                const maxGain = processed[0].gainNames.length;
+                const config = synergyConfig[cat] || { hex: "#4b5563" };
+                const section = document.createElement('div');
+                let priorityClass = (currentBoardCounts.hasOwnProperty(cat) || Object.keys(currentBoardCounts).length === 0) ? (maxGain >= 1 ? 'priority-high' : 'priority-mid') : 'dimmed';
+                
+                section.className = `category-section p-2 rounded-lg border-l-4 mb-2 ${priorityClass}`;
+                section.style.borderColor = config.hex;
+                section.innerHTML = `<h3 class="text-[9px] font-black uppercase tracking-widest mb-2" style="color: ${config.hex}">${cat}</h3>`;
+                
+                const grid = document.createElement('div'); grid.className = "grid grid-cols-5 md:grid-cols-4 gap-2";
+                processed.forEach(hero => {
+                    const img = document.createElement('img');
+                    img.src = fixPath(hero.icon);
+                    const isOnBoard = boardState.some(h => h && h.id === hero.id);
+                    let recStatus = "";
+                    if (!isOnBoard && Object.keys(currentBoardCounts).length > 0) {
+                        if (hero.gainNames.length >= 2) recStatus = "hero-rec-high";
+                        else if (hero.gainNames.length === 1) recStatus = "hero-rec-mid";
+                    }
+                    img.className = `pool-item ${recStatus}`;
+                    img.draggable = true;
+                    img.onerror = () => { img.src = "https://via.placeholder.com/50/1e293b/ffffff?text=" + hero.name[0]; };
+                    img.ondragstart = (e) => { e.dataTransfer.setData("heroId", hero.id); draggedFrom = { type: 'pool' }; };
+                    
+                    // TOOLTIP MOBILE & DESKTOP
+                    const showT = (e) => {
+                        tooltip.style.display = 'block';
+                        let detailGain = hero.gainNames.map(gn => `<span style="color:${synergyConfig[gn]?.hex || '#fff'}">${gn}</span>`).join(", ");
+                        tooltip.innerHTML = `<b class="text-amber-400">${hero.name}</b> (${hero.gold} Gold)<br>Peluang: ${hero.prob}%<br><span class="text-blue-300 text-[9px] font-bold uppercase">Benefit: ${hero.gainNames.length > 0 ? detailGain : 'Tidak Ada'}</span>`;
+                    };
+                    img.onmouseenter = showT;
+                    img.ontouchstart = showT;
+                    img.onmousemove = (e) => { 
+                        let x = e.clientX || e.touches[0].clientX;
+                        let y = e.clientY || e.touches[0].clientY;
+                        tooltip.style.left = x + 15 + 'px'; tooltip.style.top = y + 15 + 'px'; 
+                    };
+                    img.onmouseleave = () => tooltip.style.display = 'none';
+                    img.ontouchend = () => tooltip.style.display = 'none';
+                    grid.appendChild(img);
+                });
+                section.appendChild(grid); poolEl.appendChild(section);
+            });
+        }
+
+        function handleDrop(e) {
+            e.preventDefault(); this.classList.remove('drag-over');
+            const targetType = this.dataset.type, targetIdx = parseInt(this.dataset.index);
+            const targetArr = (targetType === 'board') ? boardState : benchState;
+            if (draggedFrom.type === 'pool') {
+                const found = heroes.find(h => h.id == e.dataTransfer.getData("heroId"));
+                targetArr[targetIdx] = { ...found, star: 1 };
+            } else {
+                const sourceArr = (draggedFrom.type === 'board') ? boardState : benchState;
+                const temp = targetArr[targetIdx]; targetArr[targetIdx] = sourceArr[draggedFrom.index]; sourceArr[draggedFrom.index] = temp;
+            }
+            updateUI();
+        }
+
+        function removeHero(type, index) { (type === 'board' ? boardState : benchState)[index] = null; updateUI(); }
+        function levelUp(type, index) { let a = (type === 'board' ? boardState : benchState); if(a[index] && a[index].star < 3) { a[index].star++; updateUI(); } }
+        function clearBoard() { boardState.fill(null); benchState.fill(null); updateUI(); }
+
+        function updateUI() {
+            currentBoardCounts = {}; const uniqueIds = new Set();
+            boardState.forEach(h => { if (h && !uniqueIds.has(h.id)) { uniqueIds.add(h.id); [...h.faction, ...h.role].forEach(t => currentBoardCounts[t] = (currentBoardCounts[t] || 0) + 1); } });
+
+            const renderGrid = (type, state, selector) => {
+                const slots = document.querySelectorAll(selector);
+                state.forEach((hero, i) => {
+                    slots[i].innerHTML = ""; slots[i].className = 'board-slot ' + (type === 'bench' ? 'bench-slot' : '');
+                    slots[i].style.borderColor = (type === 'bench' ? "#334155" : "#4b5563");
+                    if (hero) {
+                        const container = document.createElement('div'); container.className = "hero-container";
+                        const img = document.createElement('img'); img.src = fixPath(hero.icon); img.className = "hero-icon";
+                        img.draggable = true; img.ondragstart = () => { draggedFrom = { type, index: i }; };
+                        img.onerror = () => { img.src = "https://via.placeholder.com/50/1e293b/ffffff?text=" + hero.name[0]; };
+
+                        if (type === 'bench') {
+                            let gNames = []; [...hero.faction, ...hero.role].forEach(s => { if (currentBoardCounts[s]) gNames.push(s); });
+                            if (gNames.length >= 2) container.classList.add('hero-rec-high'); else if (gNames.length === 1) container.classList.add('hero-rec-mid');
+                            
+                            const showBT = () => {
+                                tooltip.style.display = 'block';
+                                let detailGain = gNames.map(gn => `<span style="color:${synergyConfig[gn]?.hex || '#fff'}">${gn}</span>`).join(", ");
+                                tooltip.innerHTML = `<b class="text-amber-400">${hero.name}</b><br><span class="text-blue-300 text-[9px] font-bold uppercase">Benefit: ${gNames.length > 0 ? detailGain : 'Tidak Ada'}</span>`;
+                            };
+                            container.onmouseenter = showBT; container.ontouchstart = showBT;
+                            container.onmouseleave = () => tooltip.style.display = 'none';
+                        }
+
+                        const starDiv = document.createElement('div'); starDiv.className = "star-level";
+                        for(let s=0; s<hero.star; s++) starDiv.innerHTML += '<span class="star">★</span>';
+                        if (hero.star < 3) {
+                            const btn = document.createElement('div'); btn.className = "btn-lvlup"; btn.innerText = "↑";
+                            btn.onclick = (e) => { e.stopPropagation(); levelUp(type, i); }; slots[i].appendChild(btn);
+                        }
+                        container.appendChild(img); container.appendChild(starDiv); slots[i].appendChild(container); slots[i].style.borderStyle = "solid";
+                        if (hero.star === 3) slots[i].classList.add('max-level-glow');
+                        if (type === 'board') {
+                            let bc = "#3b82f6", hg = 0;
+                            [...hero.faction, ...hero.role].forEach(t => { if (currentBoardCounts[t] >= 2 && currentBoardCounts[t] > hg) { hg = currentBoardCounts[t]; bc = synergyConfig[t]?.hex || "#fff"; } });
+                            if (hg > 0) { slots[i].style.borderColor = bc; slots[i].style.borderWidth = "4px"; }
+                        }
+                    }
+                });
+            };
+            renderGrid('board', boardState, '#board .board-slot');
+            renderGrid('bench', benchState, '#bench .board-slot');
+
+            const output = document.getElementById('synergy-output'); output.innerHTML = "";
+            const sorted = Object.entries(currentBoardCounts).sort((a,b) => b[1] - a[1]);
+            sorted.forEach(([name, count]) => {
+                const config = synergyConfig[name] || { hex: "#4b5563", icon: "icons/default.png" };
+                const div = document.createElement('div'); div.className = `p-3 synergy-card rounded-xl mb-2 flex items-center gap-3 ${count<2?'opacity-40':''}`;
+                div.style.backgroundColor = config.hex;
+                div.style.color = (parseInt(config.hex.replace('#',''), 16) > 0xffffff/2) ? 'black' : 'white';
+                div.innerHTML = `<img src="${fixPath(config.icon)}" class="contributor-icon" onerror="this.style.display='none'"><div class="flex-1 font-black text-[9px] uppercase"><span>${name}</span></div><span class="font-black text-[10px]">${count}</span>`;
+                output.appendChild(div);
+            });
+            renderPool();
+        }
+        document.getElementById('searchHero').addEventListener('input', () => renderPool());
+        renderPool();
+    </script>
+</body>
+</html>
