@@ -3,35 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MCGG Builder - Ultimate Mobile v21</title>
-    <script src="https://bernardo-castilho.github.io/dragdroptouch/DragDropTouch.js"></script>
+    <title>MCGG Builder - Tap Fix v23</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { touch-action: pan-y; background-color: #020617; overflow-x: hidden; }
-        .board-slot { width: 100%; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; border: 2px dashed #4b5563; border-radius: 8px; background-color: rgba(31, 41, 55, 0.4); transition: all 0.3s ease; position: relative; }
-        .bench-slot { background-color: rgba(30, 41, 59, 0.8); border: 2px solid #334155; }
-        .board-slot.drag-over { border-color: #ffffff; background-color: rgba(255, 255, 255, 0.2); }
-        .hero-container { width: 95%; height: 95%; position: relative; touch-action: none; }
-        .hero-icon { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; cursor: grab; background-color: #1e293b; }
-        .pool-item { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; cursor: grab; border: 2px solid transparent; transition: all 0.2s; background-color: #1e293b; touch-action: none; }
+        body { background-color: #020617; touch-action: manipulation; }
         
-        /* Glow Efek Rekomendasi */
-        .hero-rec-high { border: 3px solid #fbbf24 !important; box-shadow: 0 0 15px #fbbf24; transform: scale(1.05); z-index: 10; }
-        .hero-rec-mid { border: 2px solid #3b82f6 !important; box-shadow: 0 0 8px #3b82f6; }
+        /* Slot Papan */
+        .board-slot { 
+            width: 100%; aspect-ratio: 1 / 1; 
+            display: flex; align-items: center; justify-content: center; 
+            border: 2px dashed #334155; border-radius: 10px; 
+            background-color: rgba(30, 41, 59, 0.4); 
+            position: relative; cursor: pointer;
+        }
+        .bench-slot { background-color: rgba(15, 23, 42, 0.8); border: 2px solid #1e293b; }
+        
+        /* Hero Terpilih (Pulse Animation) */
+        .selected-hero { 
+            outline: 4px solid #10b981 !important; 
+            box-shadow: 0 0 25px #10b981; 
+            animation: pulse-select 1.5s infinite;
+            z-index: 50;
+        }
+        @keyframes pulse-select {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Hero Image */
+        .hero-container { width: 90%; height: 90%; position: relative; pointer-events: none; } /* Supaya klik tembus ke slot */
+        .hero-icon { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+        
+        /* Pool Hero (Kiri) */
+        .pool-item { 
+            width: 60px; height: 60px; /* Ukuran Mobile Besar */
+            object-fit: cover; border-radius: 10px; 
+            border: 2px solid transparent; cursor: pointer;
+            background-color: #1e293b;
+        }
+        @media (min-width: 768px) { .pool-item { width: 50px; height: 50px; } }
+
+        /* Rekomendasi */
+        .hero-rec-high { border: 3px solid #fbbf24 !important; box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); }
+        .hero-rec-mid { border: 2px solid #3b82f6 !important; }
         
         .category-section.priority-high { order: -2; background-color: rgba(16, 185, 129, 0.05); }
         .category-section.priority-mid { order: -1; }
         .category-section.dimmed { opacity: 0.2; filter: grayscale(1); order: 100; }
         
-        .btn-lvlup { position: absolute; top: -10px; right: -10px; background: #10b981; color: white; width: 26px; height: 26px; border-radius: 50%; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 30; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        /* Tombol Level Up */
+        .btn-lvlup { 
+            position: absolute; top: -10px; right: -10px; 
+            background: #10b981; color: white; width: 28px; height: 28px; 
+            border-radius: 50%; font-size: 16px; font-weight: bold; 
+            display: flex; align-items: center; justify-content: center; 
+            z-index: 100; border: 2px solid white; pointer-events: auto;
+        }
         
-        #custom-tooltip { position: fixed; pointer-events: none; z-index: 1000; display: none; background: #0f172a; border: 1px solid #334155; padding: 10px; border-radius: 8px; color: white; font-size: 11px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        
-        .star-level { position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); display: flex; gap: 1px; pointer-events: none; }
-        .star { color: #fbbf24; text-shadow: 0 0 4px rgba(0,0,0,0.9); font-size: 9px; }
-        .max-level-glow { box-shadow: 0 0 15px #fbbf24; border: 3px solid #fbbf24 !important; }
-        
-        .contributor-icon { width: 18px; height: 18px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); object-fit: cover; }
+        #custom-tooltip { position: fixed; pointer-events: none; z-index: 1000; display: none; background: #0f172a; border: 1px solid #334155; padding: 10px; border-radius: 8px; color: white; font-size: 11px; }
+        .star-level { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 1px; }
+        .star { color: #fbbf24; text-shadow: 0 0 4px #000; font-size: 10px; }
+
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
@@ -42,40 +75,40 @@
 
     <div class="max-w-[1600px] mx-auto">
         <header class="mb-4 flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-xl">
-            <h1 class="text-lg font-black text-blue-400 uppercase tracking-tighter">MCGG <span class="text-amber-400">BUILDER v21</span></h1>
+            <h1 class="text-xl font-black text-blue-400 uppercase">MCGG <span class="text-amber-400">TAP FIX</span></h1>
             <div class="flex items-center gap-2">
-                <select id="cmd-lvl" onchange="renderPool()" class="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[10px] font-bold text-white outline-none">
+                <select id="cmd-lvl" onchange="renderPool()" class="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-white outline-none">
                     <option value="3">Lv.3</option><option value="4">Lv.4</option><option value="5" selected>Lv.5</option>
                     <option value="6">Lv.6</option><option value="7">Lv.7</option><option value="8">Lv.8</option>
                     <option value="9">Lv.9</option><option value="10">Lv.10</option>
                 </select>
-                <button onclick="clearBoard()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg font-black text-[10px] uppercase">Reset</button>
+                <button onclick="clearAll()" class="bg-rose-600 text-white px-3 py-1.5 rounded-lg font-black text-[10px]">RESET</button>
             </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div class="lg:col-span-3 bg-slate-900 rounded-xl border border-slate-800 flex flex-col h-[400px] lg:h-[850px]">
+            <div class="lg:col-span-3 bg-slate-900 rounded-xl border border-slate-800 flex flex-col h-[500px] lg:h-[850px]">
                 <div class="p-3 border-b border-slate-800">
-                    <input type="text" id="searchHero" placeholder="Cari Hero..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs outline-none mb-2 text-white">
-                    <div class="flex p-1 bg-slate-950 rounded-lg border border-slate-800 text-[9px] font-bold">
-                        <button onclick="switchView('faction')" id="tab-faction" class="flex-1 py-2 rounded-md bg-blue-600 text-white">FACTION</button>
-                        <button onclick="switchView('role')" id="tab-role" class="flex-1 py-2 rounded-md text-slate-400 ml-1">ROLE</button>
+                    <input type="text" id="searchHero" placeholder="Cari Hero..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-3 text-sm mb-3">
+                    <div class="flex p-1 bg-slate-950 rounded-lg border border-slate-800">
+                        <button onclick="switchView('faction')" id="tab-faction" class="flex-1 py-2 text-[10px] rounded-md bg-blue-600 text-white">FACTION</button>
+                        <button onclick="switchView('role')" id="tab-role" class="flex-1 py-2 text-[10px] rounded-md text-slate-400 ml-1">ROLE</button>
                     </div>
                 </div>
-                <div id="hero-pool" class="flex-1 overflow-y-auto p-2 flex flex-col space-y-2"></div>
+                <div id="hero-pool" class="flex-1 overflow-y-auto p-3 flex flex-col space-y-4"></div>
             </div>
 
             <div class="lg:col-span-6 flex flex-col gap-4">
-                <div class="bg-slate-900 p-3 md:p-6 rounded-2xl border border-slate-800 shadow-2xl">
-                    <div id="board" class="grid grid-cols-7 gap-1.5 md:gap-3"></div>
+                <div class="bg-slate-900 p-4 md:p-8 rounded-2xl border border-slate-800 relative">
+                    <div id="board" class="grid grid-cols-7 gap-2 md:gap-3"></div>
                 </div>
-                <div class="bg-slate-900 p-3 rounded-2xl border border-slate-800 shadow-xl border-t-4 border-t-slate-700">
-                    <div id="bench" class="grid grid-cols-8 gap-1.5 md:gap-3"></div>
+                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 border-t-4 border-t-slate-700">
+                    <div id="bench" class="grid grid-cols-8 gap-2 md:gap-3"></div>
                 </div>
             </div>
 
             <div class="lg:col-span-3 bg-slate-900 p-4 rounded-xl border border-slate-800 h-auto lg:h-[850px] overflow-y-auto">
-                <h2 class="text-sm font-black mb-4 uppercase border-b border-slate-800 pb-2 text-blue-400 tracking-widest">Sinergi Aktif</h2>
+                <h2 class="text-sm font-black mb-4 uppercase border-b border-slate-800 pb-2 text-blue-400">Sinergi Aktif</h2>
                 <div id="synergy-output" class="space-y-2 pb-10"></div>
             </div>
         </div>
@@ -171,37 +204,49 @@
         ];
 
         let boardState = Array(21).fill(null), benchState = Array(8).fill(null);
-        let draggedFrom = null, currentView = 'faction', currentBoardCounts = {};
+        let currentView = 'faction', currentBoardCounts = {};
+        let selectedSource = null; 
 
-        const tooltip = document.getElementById('custom-tooltip');
-
-        function switchView(view) {
-            currentView = view;
-            document.getElementById('tab-faction').className = view === 'faction' ? 'flex-1 py-2 rounded-md bg-blue-600 text-white transition' : 'flex-1 py-2 rounded-md text-slate-400';
-            document.getElementById('tab-role').className = view === 'role' ? 'flex-1 py-2 rounded-md bg-blue-600 text-white transition' : 'flex-1 py-2 rounded-md text-slate-400 ml-1';
-            renderPool();
-        }
+        function switchView(view) { currentView = view; renderPool(); }
 
         function initGrid(id, size, className) {
             const el = document.getElementById(id);
             for (let i = 0; i < size; i++) {
                 const slot = document.createElement('div');
                 slot.className = className; slot.dataset.index = i; slot.dataset.type = id;
-                slot.ondragover = (e) => { e.preventDefault(); slot.classList.add('drag-over'); };
-                slot.ondragleave = () => slot.classList.remove('drag-over');
-                slot.ondrop = handleDrop;
-                slot.onclick = (e) => { if (!e.target.classList.contains('btn-lvlup')) removeHero(id, i); };
+                slot.onclick = () => handleSlotClick(id, i);
                 el.appendChild(slot);
             }
         }
         initGrid('board', 21, 'board-slot');
         initGrid('bench', 8, 'board-slot bench-slot');
 
+        function handleSlotClick(type, index) {
+            const arr = (type === 'board' ? boardState : benchState);
+            const currentHero = arr[index];
+
+            if (selectedSource) {
+                // Letakkan hero ke slot
+                if (selectedSource.type === 'pool') {
+                    arr[index] = { ...selectedSource.hero, star: 1 };
+                } else {
+                    const srcArr = (selectedSource.type === 'board' ? boardState : benchState);
+                    const temp = arr[index];
+                    arr[index] = srcArr[selectedSource.index];
+                    srcArr[selectedSource.index] = temp;
+                }
+                selectedSource = null;
+            } else if (currentHero) {
+                // Pilih hero dari papan/bench untuk dipindah atau dihapus (double click manual = reset hero)
+                selectedSource = { type, index };
+            }
+            updateUI();
+        }
+
         function renderPool() {
             const poolEl = document.getElementById('hero-pool'); poolEl.innerHTML = "";
             const searchVal = document.getElementById('searchHero').value.toLowerCase();
             const cmdLvl = document.getElementById('cmd-lvl').value;
-            const probs = shopProb[cmdLvl];
             const categories = [...new Set(heroes.flatMap(h => currentView === 'faction' ? h.faction : h.role))].sort();
 
             categories.forEach(cat => {
@@ -209,75 +254,53 @@
                 if (heroesInCat.length === 0) return;
 
                 const processed = heroesInCat.map(hero => {
-                    let gainNames = [];
-                    [...hero.faction, ...hero.role].forEach(s => { if (currentBoardCounts[s]) gainNames.push(s); });
-                    let prob = probs[hero.gold - 1] || 0;
-                    let score = (gainNames.length * 1000) + prob;
-                    return { ...hero, gainNames, prob, score };
+                    let gNames = []; [...hero.faction, ...hero.role].forEach(s => { if (currentBoardCounts[s]) gNames.push(s); });
+                    let prob = shopProb[cmdLvl][hero.gold - 1] || 0;
+                    return { ...hero, gNames, prob, score: (gNames.length * 1000) + prob };
                 }).sort((a, b) => b.score - a.score);
 
-                const maxGain = processed[0].gainNames.length;
-                const config = synergyConfig[cat] || { hex: "#4b5563" };
                 const section = document.createElement('div');
-                let priorityClass = (currentBoardCounts.hasOwnProperty(cat) || Object.keys(currentBoardCounts).length === 0) ? (maxGain >= 1 ? 'priority-high' : 'priority-mid') : 'dimmed';
+                const maxGain = processed[0].gNames.length;
+                let pClass = (currentBoardCounts.hasOwnProperty(cat) || Object.keys(currentBoardCounts).length === 0) ? (maxGain >= 1 ? 'priority-high' : 'priority-mid') : 'dimmed';
                 
-                section.className = `category-section p-2 rounded-lg border-l-4 mb-2 ${priorityClass}`;
-                section.style.borderColor = config.hex;
-                section.innerHTML = `<h3 class="text-[9px] font-black uppercase tracking-widest mb-2" style="color: ${config.hex}">${cat}</h3>`;
+                section.className = `category-section p-2 rounded-lg border-l-4 mb-2 ${pClass}`;
+                section.style.borderColor = synergyConfig[cat]?.hex || "#334155";
+                section.innerHTML = `<h3 class="text-[9px] font-black uppercase mb-2" style="color: ${synergyConfig[cat]?.hex}">${cat}</h3>`;
                 
                 const grid = document.createElement('div'); grid.className = "grid grid-cols-5 md:grid-cols-4 gap-2";
                 processed.forEach(hero => {
                     const img = document.createElement('img');
                     img.src = fixPath(hero.icon);
                     const isOnBoard = boardState.some(h => h && h.id === hero.id);
-                    let recStatus = "";
+                    let rec = "";
                     if (!isOnBoard && Object.keys(currentBoardCounts).length > 0) {
-                        if (hero.gainNames.length >= 2) recStatus = "hero-rec-high";
-                        else if (hero.gainNames.length === 1) recStatus = "hero-rec-mid";
+                        if (hero.gNames.length >= 2) rec = "hero-rec-high";
+                        else if (hero.gNames.length === 1) rec = "hero-rec-mid";
                     }
-                    img.className = `pool-item ${recStatus}`;
-                    img.draggable = true;
-                    img.onerror = () => { img.src = "https://via.placeholder.com/50/1e293b/ffffff?text=" + hero.name[0]; };
-                    img.ondragstart = (e) => { e.dataTransfer.setData("heroId", hero.id); draggedFrom = { type: 'pool' }; };
+
+                    const isSel = (selectedSource?.type === 'pool' && selectedSource.hero.id === hero.id);
+                    img.className = `pool-item ${rec} ${isSel ? 'selected-hero' : ''}`;
+                    img.onclick = (e) => { e.stopPropagation(); selectedSource = { type: 'pool', hero }; updateUI(); };
                     
-                    // TOOLTIP MOBILE & DESKTOP
-                    const showT = (e) => {
+                    // Tooltip
+                    img.onmouseenter = (e) => {
+                        const tooltip = document.getElementById('custom-tooltip');
                         tooltip.style.display = 'block';
-                        let detailGain = hero.gainNames.map(gn => `<span style="color:${synergyConfig[gn]?.hex || '#fff'}">${gn}</span>`).join(", ");
-                        tooltip.innerHTML = `<b class="text-amber-400">${hero.name}</b> (${hero.gold} Gold)<br>Peluang: ${hero.prob}%<br><span class="text-blue-300 text-[9px] font-bold uppercase">Benefit: ${hero.gainNames.length > 0 ? detailGain : 'Tidak Ada'}</span>`;
+                        let gStr = hero.gNames.map(gn => `<span style="color:${synergyConfig[gn]?.hex || '#fff'}">${gn}</span>`).join(", ");
+                        tooltip.innerHTML = `<b>${hero.name}</b> (${hero.gold}G)<br>Muncul: ${hero.prob}%<br>Benefit: ${hero.gNames.length > 0 ? gStr : '-'}`;
                     };
-                    img.onmouseenter = showT;
-                    img.ontouchstart = showT;
                     img.onmousemove = (e) => { 
-                        let x = e.clientX || e.touches[0].clientX;
-                        let y = e.clientY || e.touches[0].clientY;
-                        tooltip.style.left = x + 15 + 'px'; tooltip.style.top = y + 15 + 'px'; 
+                        const tooltip = document.getElementById('custom-tooltip');
+                        tooltip.style.left = e.clientX + 10 + 'px'; 
+                        tooltip.style.top = e.clientY + 10 + 'px'; 
                     };
-                    img.onmouseleave = () => tooltip.style.display = 'none';
-                    img.ontouchend = () => tooltip.style.display = 'none';
+                    img.onmouseleave = () => document.getElementById('custom-tooltip').style.display = 'none';
+
                     grid.appendChild(img);
                 });
                 section.appendChild(grid); poolEl.appendChild(section);
             });
         }
-
-        function handleDrop(e) {
-            e.preventDefault(); this.classList.remove('drag-over');
-            const targetType = this.dataset.type, targetIdx = parseInt(this.dataset.index);
-            const targetArr = (targetType === 'board') ? boardState : benchState;
-            if (draggedFrom.type === 'pool') {
-                const found = heroes.find(h => h.id == e.dataTransfer.getData("heroId"));
-                targetArr[targetIdx] = { ...found, star: 1 };
-            } else {
-                const sourceArr = (draggedFrom.type === 'board') ? boardState : benchState;
-                const temp = targetArr[targetIdx]; targetArr[targetIdx] = sourceArr[draggedFrom.index]; sourceArr[draggedFrom.index] = temp;
-            }
-            updateUI();
-        }
-
-        function removeHero(type, index) { (type === 'board' ? boardState : benchState)[index] = null; updateUI(); }
-        function levelUp(type, index) { let a = (type === 'board' ? boardState : benchState); if(a[index] && a[index].star < 3) { a[index].star++; updateUI(); } }
-        function clearBoard() { boardState.fill(null); benchState.fill(null); updateUI(); }
 
         function updateUI() {
             currentBoardCounts = {}; const uniqueIds = new Set();
@@ -286,39 +309,35 @@
             const renderGrid = (type, state, selector) => {
                 const slots = document.querySelectorAll(selector);
                 state.forEach((hero, i) => {
-                    slots[i].innerHTML = ""; slots[i].className = 'board-slot ' + (type === 'bench' ? 'bench-slot' : '');
-                    slots[i].style.borderColor = (type === 'bench' ? "#334155" : "#4b5563");
+                    slots[i].innerHTML = ""; 
+                    slots[i].className = `board-slot ${type === 'bench' ? 'bench-slot' : ''}`;
+                    if (selectedSource && selectedSource.type === type && selectedSource.index === i) slots[i].classList.add('selected-hero');
+
                     if (hero) {
                         const container = document.createElement('div'); container.className = "hero-container";
                         const img = document.createElement('img'); img.src = fixPath(hero.icon); img.className = "hero-icon";
-                        img.draggable = true; img.ondragstart = () => { draggedFrom = { type, index: i }; };
-                        img.onerror = () => { img.src = "https://via.placeholder.com/50/1e293b/ffffff?text=" + hero.name[0]; };
-
-                        if (type === 'bench') {
-                            let gNames = []; [...hero.faction, ...hero.role].forEach(s => { if (currentBoardCounts[s]) gNames.push(s); });
-                            if (gNames.length >= 2) container.classList.add('hero-rec-high'); else if (gNames.length === 1) container.classList.add('hero-rec-mid');
-                            
-                            const showBT = () => {
-                                tooltip.style.display = 'block';
-                                let detailGain = gNames.map(gn => `<span style="color:${synergyConfig[gn]?.hex || '#fff'}">${gn}</span>`).join(", ");
-                                tooltip.innerHTML = `<b class="text-amber-400">${hero.name}</b><br><span class="text-blue-300 text-[9px] font-bold uppercase">Benefit: ${gNames.length > 0 ? detailGain : 'Tidak Ada'}</span>`;
-                            };
-                            container.onmouseenter = showBT; container.ontouchstart = showBT;
-                            container.onmouseleave = () => tooltip.style.display = 'none';
-                        }
-
+                        
                         const starDiv = document.createElement('div'); starDiv.className = "star-level";
                         for(let s=0; s<hero.star; s++) starDiv.innerHTML += '<span class="star">★</span>';
+                        
                         if (hero.star < 3) {
-                            const btn = document.createElement('div'); btn.className = "btn-lvlup"; btn.innerText = "↑";
-                            btn.onclick = (e) => { e.stopPropagation(); levelUp(type, i); }; slots[i].appendChild(btn);
+                            const btn = document.createElement('div'); btn.className = "btn-lvlup"; btn.innerText = "+";
+                            btn.onclick = (e) => { e.stopPropagation(); if (hero.star < 3) hero.star++; updateUI(); }; 
+                            slots[i].appendChild(btn);
                         }
-                        container.appendChild(img); container.appendChild(starDiv); slots[i].appendChild(container); slots[i].style.borderStyle = "solid";
+
+                        if (type === 'bench') {
+                            let gn = []; [...hero.faction, ...hero.role].forEach(s => { if (currentBoardCounts[s]) gn.push(s); });
+                            if (gn.length >= 2) container.classList.add('hero-rec-high'); else if (gn.length === 1) container.classList.add('hero-rec-mid');
+                        }
+
+                        container.appendChild(img); container.appendChild(starDiv);
+                        slots[i].appendChild(container);
                         if (hero.star === 3) slots[i].classList.add('max-level-glow');
                         if (type === 'board') {
                             let bc = "#3b82f6", hg = 0;
                             [...hero.faction, ...hero.role].forEach(t => { if (currentBoardCounts[t] >= 2 && currentBoardCounts[t] > hg) { hg = currentBoardCounts[t]; bc = synergyConfig[t]?.hex || "#fff"; } });
-                            if (hg > 0) { slots[i].style.borderColor = bc; slots[i].style.borderWidth = "4px"; }
+                            if (hg > 0) { slots[i].style.borderColor = bc; slots[i].style.borderWidth = "4px"; slots[i].style.borderStyle = "solid"; }
                         }
                     }
                 });
@@ -327,16 +346,21 @@
             renderGrid('bench', benchState, '#bench .board-slot');
 
             const output = document.getElementById('synergy-output'); output.innerHTML = "";
-            const sorted = Object.entries(currentBoardCounts).sort((a,b) => b[1] - a[1]);
-            sorted.forEach(([name, count]) => {
+            Object.entries(currentBoardCounts).sort((a,b) => b[1] - a[1]).forEach(([name, count]) => {
                 const config = synergyConfig[name] || { hex: "#4b5563", icon: "icons/default.png" };
-                const div = document.createElement('div'); div.className = `p-3 synergy-card rounded-xl mb-2 flex items-center gap-3 ${count<2?'opacity-40':''}`;
+                const div = document.createElement('div'); 
+                div.className = `p-2 rounded-lg mb-1 flex items-center gap-2 ${count<2?'opacity-40':'shadow-lg'}`;
                 div.style.backgroundColor = config.hex;
                 div.style.color = (parseInt(config.hex.replace('#',''), 16) > 0xffffff/2) ? 'black' : 'white';
-                div.innerHTML = `<img src="${fixPath(config.icon)}" class="contributor-icon" onerror="this.style.display='none'"><div class="flex-1 font-black text-[9px] uppercase"><span>${name}</span></div><span class="font-black text-[10px]">${count}</span>`;
+                div.innerHTML = `<img src="${fixPath(config.icon)}" class="contributor-icon w-4 h-4"><div class="flex-1 font-black text-[9px] uppercase">${name}</div><span class="font-black text-[10px]">${count}</span>`;
                 output.appendChild(div);
             });
             renderPool();
+        }
+        
+        function clearAll() { 
+            boardState.fill(null); benchState.fill(null); 
+            selectedSource = null; updateUI(); 
         }
         document.getElementById('searchHero').addEventListener('input', () => renderPool());
         renderPool();
