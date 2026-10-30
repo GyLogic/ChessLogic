@@ -1,369 +1,1173 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MCGG Builder - Tap Fix v23</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #020617; touch-action: manipulation; }
-        
-        /* Slot Papan */
-        .board-slot { 
-            width: 100%; aspect-ratio: 1 / 1; 
-            display: flex; align-items: center; justify-content: center; 
-            border: 2px dashed #334155; border-radius: 10px; 
-            background-color: rgba(30, 41, 59, 0.4); 
-            position: relative; cursor: pointer;
-        }
-        .bench-slot { background-color: rgba(15, 23, 42, 0.8); border: 2px solid #1e293b; }
-        
-        /* Hero Terpilih (Pulse Animation) */
-        .selected-hero { 
-            outline: 4px solid #10b981 !important; 
-            box-shadow: 0 0 25px #10b981; 
-            animation: pulse-select 1.5s infinite;
-            z-index: 50;
-        }
-        @keyframes pulse-select {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Texas Hold'em Master Odds & Probability Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at 50% 15%, #0f2b1d 0%, #07150e 65%, #030805 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+    }
+    .poker-title {
+      font-family: 'Cinzel', serif;
+    }
+    .board-felt {
+      background: radial-gradient(ellipse at center, #134e32 0%, #0c3522 75%, #072115 100%);
+      border: 3px solid #1f6b47;
+      box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8), 0 12px 30px -5px rgba(0, 0, 0, 0.7);
+    }
+    .card-slot {
+      aspect-ratio: 5 / 7;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .card-slot:hover {
+      transform: translateY(-2px);
+    }
+    .suit-btn.active {
+      box-shadow: 0 0 0 2px #facc15, 0 0 16px rgba(250, 204, 21, 0.45);
+    }
+    /* 4-Color & Standard 2-Color Deck Standards for high visibility */
+    .color-spade { color: #0f172a !important; }
+    .color-heart { color: #dc2626 !important; }
+    .color-diamond { color: #e11d48 !important; }
+    .color-club { color: #1e293b !important; }
 
-        /* Hero Image */
-        .hero-container { width: 90%; height: 90%; position: relative; pointer-events: none; } /* Supaya klik tembus ke slot */
-        .hero-icon { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
-        
-        /* Pool Hero (Kiri) */
-        .pool-item { 
-            width: 60px; height: 60px; /* Ukuran Mobile Besar */
-            object-fit: cover; border-radius: 10px; 
-            border: 2px solid transparent; cursor: pointer;
-            background-color: #1e293b;
-        }
-        @media (min-width: 768px) { .pool-item { width: 50px; height: 50px; } }
-
-        /* Rekomendasi */
-        .hero-rec-high { border: 3px solid #fbbf24 !important; box-shadow: 0 0 15px rgba(251, 191, 36, 0.5); }
-        .hero-rec-mid { border: 2px solid #3b82f6 !important; }
-        
-        .category-section.priority-high { order: -2; background-color: rgba(16, 185, 129, 0.05); }
-        .category-section.priority-mid { order: -1; }
-        .category-section.dimmed { opacity: 0.2; filter: grayscale(1); order: 100; }
-        
-        /* Tombol Level Up */
-        .btn-lvlup { 
-            position: absolute; top: -10px; right: -10px; 
-            background: #10b981; color: white; width: 28px; height: 28px; 
-            border-radius: 50%; font-size: 16px; font-weight: bold; 
-            display: flex; align-items: center; justify-content: center; 
-            z-index: 100; border: 2px solid white; pointer-events: auto;
-        }
-        
-        #custom-tooltip { position: fixed; pointer-events: none; z-index: 1000; display: none; background: #0f172a; border: 1px solid #334155; padding: 10px; border-radius: 8px; color: white; font-size: 11px; }
-        .star-level { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); display: flex; gap: 1px; }
-        .star { color: #fbbf24; text-shadow: 0 0 4px #000; font-size: 10px; }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-    </style>
+    /* Card face styling */
+    .poker-card-face {
+      background-color: #ffffff !important;
+      border: 1px solid #cbd5e1;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+  </style>
 </head>
-<body class="text-slate-100 p-2 md:p-4 font-sans select-none">
+<body class="p-3 sm:p-6 pb-12 flex flex-col justify-between">
 
-    <div id="custom-tooltip"></div>
-
-    <div class="max-w-[1600px] mx-auto">
-        <header class="mb-4 flex justify-between items-center bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-xl">
-            <h1 class="text-xl font-black text-blue-400 uppercase">MCGG <span class="text-amber-400">TAP FIX</span></h1>
-            <div class="flex items-center gap-2">
-                <select id="cmd-lvl" onchange="renderPool()" class="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-xs text-white outline-none">
-                    <option value="3">Lv.3</option><option value="4">Lv.4</option><option value="5" selected>Lv.5</option>
-                    <option value="6">Lv.6</option><option value="7">Lv.7</option><option value="8">Lv.8</option>
-                    <option value="9">Lv.9</option><option value="10">Lv.10</option>
-                </select>
-                <button onclick="clearAll()" class="bg-rose-600 text-white px-3 py-1.5 rounded-lg font-black text-[10px]">RESET</button>
-            </div>
-        </header>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div class="lg:col-span-3 bg-slate-900 rounded-xl border border-slate-800 flex flex-col h-[500px] lg:h-[850px]">
-                <div class="p-3 border-b border-slate-800">
-                    <input type="text" id="searchHero" placeholder="Cari Hero..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-3 text-sm mb-3">
-                    <div class="flex p-1 bg-slate-950 rounded-lg border border-slate-800">
-                        <button onclick="switchView('faction')" id="tab-faction" class="flex-1 py-2 text-[10px] rounded-md bg-blue-600 text-white">FACTION</button>
-                        <button onclick="switchView('role')" id="tab-role" class="flex-1 py-2 text-[10px] rounded-md text-slate-400 ml-1">ROLE</button>
-                    </div>
-                </div>
-                <div id="hero-pool" class="flex-1 overflow-y-auto p-3 flex flex-col space-y-4"></div>
-            </div>
-
-            <div class="lg:col-span-6 flex flex-col gap-4">
-                <div class="bg-slate-900 p-4 md:p-8 rounded-2xl border border-slate-800 relative">
-                    <div id="board" class="grid grid-cols-7 gap-2 md:gap-3"></div>
-                </div>
-                <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 border-t-4 border-t-slate-700">
-                    <div id="bench" class="grid grid-cols-8 gap-2 md:gap-3"></div>
-                </div>
-            </div>
-
-            <div class="lg:col-span-3 bg-slate-900 p-4 rounded-xl border border-slate-800 h-auto lg:h-[850px] overflow-y-auto">
-                <h2 class="text-sm font-black mb-4 uppercase border-b border-slate-800 pb-2 text-blue-400">Sinergi Aktif</h2>
-                <div id="synergy-output" class="space-y-2 pb-10"></div>
-            </div>
-        </div>
+  <!-- Header -->
+  <header class="max-w-6xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-emerald-950">
+    <div class="text-center sm:text-left">
+      <div class="flex items-center justify-center sm:justify-start gap-2">
+        <span class="text-2xl text-amber-400">♠</span>
+        <h1 class="poker-title text-xl sm:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500">
+          POKER PROBABILITY LAB
+        </h1>
+        <span class="text-2xl text-red-500">♥</span>
+      </div>
+      <p class="text-xs text-emerald-400/80 mt-0.5">Multiplayer Equity & Showdown Distribution Engine</p>
     </div>
 
-    <script>
-        function fixPath(path) { return encodeURI(path); }
+    <!-- Quick Utilities -->
+    <div class="flex items-center gap-2">
+      <button onclick="setSampleHand()" class="text-xs px-3 py-2 bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-300 rounded-xl font-semibold border border-emerald-700/50 transition">
+        Contoh Kartu
+      </button>
+      <button onclick="resetBoardOnly()" class="text-xs px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold border border-slate-700 transition">
+        Clear Board
+      </button>
+      <button onclick="resetAllCards()" class="text-xs px-3 py-2 bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 rounded-xl font-semibold border border-rose-800/60 transition">
+        Reset Total
+      </button>
+    </div>
+  </header>
 
-        const shopProb = {
-            3: [60, 30, 10, 0, 0], 4: [50, 35, 15, 0, 0], 5: [34, 35, 30, 1, 0],
-            6: [25, 30, 40, 5, 0], 7: [19, 28, 42, 10, 1], 8: [16, 26, 35, 18, 5],
-            9: [13, 22, 25, 26, 14], 10: [6, 12, 22, 35, 25]
-        };
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-5 mt-5">
 
-        const synergyConfig = {
-            "Beyond the Clouds": { hex: "#52dfec", icon: "icons/beyond.png", tiers: [2, 3] },
-            "Bruiser": { hex: "#39290b", icon: "icons/bruiser.png", tiers: [2, 4, 6] },
-            "Dauntless": { hex: "#ff8f70", icon: "icons/dauntless.png", tiers: [2, 4, 6] },
-            "Defender": { hex: "#683c16", icon: "icons/defender.png", tiers: [2, 4, 6] },
-            "Exorcist": { hex: "#fde05d", icon: "icons/exorcist.png", tiers: [2, 4, 6, 10] },
-            "Glory League": { hex: "#cbfffa", icon: "icons/glory.png", tiers: [2, 4, 6] },
-            "Heartbond": { hex: "#ff7def", icon: "icons/heartbond.png", tiers: [2, 4, 6, 10] },
-            "KOF": { hex: "#dc2c1b", icon: "icons/kof.png", tiers: [2, 4, 6, 11] },
-            "Luminexus": { hex: "#e6c2f4", icon: "icons/luminexus.png", tiers: [2, 4, 6, 10] },
-            "Mage": { hex: "#2892ff", icon: "icons/mage.png", tiers: [2, 4, 6] },
-            "Marksman": { hex: "#2892ff", icon: "icons/marksman.png", tiers: [2, 4, 6] },
-            "Mortal Rivals": { hex: "#ffca6b", icon: "icons/mortal.png", tiers: [1, 2] },
-            "Mystic Meow": { hex: "#ffca6b", icon: "icons/mystic.png", tiers: [2, 9, 11] },
-            "Neobeasts": { hex: "#c62e5f", icon: "icons/neobeasts.png", tiers: [2, 4, 6, 10] },
-            "Phasewarper": { hex: "#a7fdff", icon: "icons/phasewarper.png", tiers: [2, 3] },
-            "Scavenger": { hex: "#ffe29b", icon: "icons/scavanger.png", tiers: [2, 3] },
-            "Soul Vessels": { hex: "#582410", icon: "icons/soul.png", tiers: [2, 4, 6, 10] },
-            "Stargazer": { hex: "#af81ff", icon: "icons/stargazer.png", tiers: [2, 4, 6] },
-            "Swift blade": { hex: "#4d2463", icon: "icons/swiftblade.png", tiers: [2, 4, 6] },
-            "Toy Mischief": { hex: "#1b305a", icon: "icons/toy.png", tiers: [2, 4, 6, 10] },
-            "Weapon Master": { hex: "#d33432", icon: "icons/weapon.png", tiers: [2, 4, 6] }
-        };
-
-        const heroes = [
-            { id: 1, name: "Iori Yagami", faction: ["KOF", "Mortal Rivals"], role: ["Bruiser"], gold: 5, icon: "icons/iori.png" },
-            { id: 2, name: "Terry Bogard", faction: ["KOF"], role: ["Defender"], gold: 4, icon: "icons/terry.png" },
-            { id: 3, name: "Chris", faction: ["KOF"], role: ["Dauntless"], gold: 2, icon: "icons/chris.png" },
-            { id: 4, name: "Kula", faction: ["KOF"], role: ["Stargazer"], gold: 1, icon: "icons/kula.png" },
-            { id: 5, name: "K'", faction: ["KOF"], role: ["Swift blade"], gold: 4, icon: "icons/k.png" },
-            { id: 6, name: "Kyo Kusanagi", faction: ["KOF", "Mortal Rivals"], role: ["Mage"], gold: 5, icon: "icons/kyo.png" },
-            { id: 7, name: "Leona", faction: ["KOF"], role: ["Scavenger"], gold: 3, icon: "icons/leona.png" },
-            { id: 8, name: "Gloo", faction: ["Soul Vessels"], role: ["Dauntless"], gold: 3, icon: "icons/gloo.png" },
-            { id: 9, name: "Benedetta", faction: ["Soul Vessels"], role: ["Weapon Master"], gold: 5, icon: "icons/benedetta.png" },
-            { id: 10, name: "Hanabi", faction: ["Soul Vessels"], role: ["Marksman"], gold: 4, icon: "icons/hanabi.png" },
-            { id: 11, name: "Aamon", faction: ["Soul Vessels"], role: ["Swift blade"], gold: 2, icon: "icons/aamon.png" },
-            { id: 12, name: "Cecilion", faction: ["Soul Vessels"], role: ["Mage"], gold: 1, icon: "icons/cecilion.png" },
-            { id: 13, name: "Clint", faction: ["Soul Vessels"], role: ["Phasewarper"], gold: 2, icon: "icons/clint.png" },
-            { id: 14, name: "Miya", faction: ["Heartbond"], role: ["Marksman"], gold: 3, icon: "icons/miya.png" },
-            { id: 15, name: "Odette", faction: ["Heartbond"], role: ["Stargazer"], gold: 2, icon: "icons/odette.png" },
-            { id: 16, name: "Lancelot", faction: ["Heartbond"], role: ["Phasewarper"], gold: 5, icon: "icons/lancelot.png" },
-            { id: 17, name: "Khufra", faction: ["Heartbond"], role: ["Defender"], gold: 3, icon: "icons/khufra.png" },
-            { id: 18, name: "Esmeralda", faction: ["Heartbond"], role: ["Dauntless"], gold: 4, icon: "icons/esmeralda.png" },
-            { id: 19, name: "Alucard", faction: ["Heartbond"], role: ["Weapon Master"], gold: 1, icon: "icons/alucard.png" },
-            { id: 20, name: "Masha", faction: ["Luminexus"], role: ["Bruiser"], gold: 3, icon: "icons/masha.png" },
-            { id: 21, name: "Cici", faction: ["Luminexus"], role: ["Weapon Master"], gold: 2, icon: "icons/cici.png" },
-            { id: 22, name: "Rafaela", faction: ["Luminexus"], role: ["Stargazer"], gold: 5, icon: "icons/rafaela.png" },
-            { id: 23, name: "Nolan", faction: ["Luminexus"], role: ["Swift blade"], gold: 1, icon: "icons/nolan.png" },
-            { id: 24, name: "Valentina", faction: ["Luminexus"], role: ["Mage"], gold: 4, icon: "icons/valentina.png" },
-            { id: 25, name: "Floryn", faction: ["Luminexus"], role: ["Scavenger"], gold: 4, icon: "icons/floryn.png" },
-            { id: 26, name: "Yu Zhong", faction: ["Exorcist"], role: ["Bruiser"], gold: 4, icon: "icons/yuzhong.png" },
-            { id: 27, name: "Ruby", faction: ["Exorcist"], role: ["Dauntless"], gold: 5, icon: "icons/ruby.png" },
-            { id: 28, name: "Granger", faction: ["Exorcist"], role: ["Marksman"], gold: 2, icon: "icons/granger.png" },
-            { id: 29, name: "Saber", faction: ["Exorcist"], role: ["Swift blade"], gold: 3, icon: "icons/saber.png" },
-            { id: 30, name: "Hayabusa", faction: ["Exorcist"], role: ["Phasewarper"], gold: 4, icon: "icons/hayabusa.png" },
-            { id: 31, name: "Phoveus", faction: ["Exorcist"], role: ["Scavenger"], gold: 1, icon: "icons/phoveus.png" },
-            { id: 32, name: "Gatotkaca", faction: ["Neobeasts"], role: ["Bruiser", "Defender"], gold: 2, icon: "icons/gatotkaca.png" },
-            { id: 33, name: "Fredrinn", faction: ["Neobeasts"], role: ["Weapon Master"], gold: 3, icon: "icons/fredrinn.png" },
-            { id: 34, name: "Brody", faction: ["Neobeasts"], role: ["Marksman"], gold: 1, icon: "icons/brody.png" },
-            { id: 35, name: "Pharsa", faction: ["Neobeasts"], role: ["Stargazer"], gold: 4, icon: "icons/pharsa.png" },
-            { id: 36, name: "Ling", faction: ["Neobeasts"], role: ["Swift blade"], gold: 5, icon: "icons/ling.png" },
-            { id: 37, name: "Lylia", faction: ["Neobeasts"], role: ["Mage"], gold: 2, icon: "icons/lylia.png" },
-            { id: 38, name: "Jawhead", faction: ["Toy Mischief"], role: ["Bruiser"], gold: 1, icon: "icons/jawhead.png" },
-            { id: 39, name: "Uranus", faction: ["Toy Mischief"], role: ["Defender"], gold: 2, icon: "icons/uranus.png" },
-            { id: 40, name: "Barats", faction: ["Toy Mischief"], role: ["Dauntless"], gold: 4, icon: "icons/barats.png" },
-            { id: 41, name: "Aulus", faction: ["Toy Mischief"], role: ["Weapon Master"], gold: 3, icon: "icons/aulus.png" },
-            { id: 42, name: "Cyclops", faction: ["Toy Mischief"], role: ["Stargazer"], gold: 4, icon: "icons/cyclops.png" },
-            { id: 43, name: "Harith", faction: ["Toy Mischief"], role: ["Mage"], gold: 3, icon: "icons/harith.png" },
-            { id: 44, name: "Aldous", faction: ["Glory League"], role: ["Bruiser"], gold: 2, icon: "icons/aldous.png" },
-            { id: 45, name: "Minotaur", faction: ["Glory League"], role: ["Defender"], gold: 3, icon: "icons/minotaur.png" },
-            { id: 46, name: "Roger", faction: ["Glory League"], role: ["Weapon Master"], gold: 4, icon: "icons/roger.png" },
-            { id: 47, name: "Beatrix", faction: ["Glory League"], role: ["Marksman"], gold: 2, icon: "icons/beatrix.png" },
-            { id: 48, name: "Silvanna", faction: ["Mystic Meow"], role: ["Dauntless"], gold: 1, icon: "icons/silvanna.png" },
-            { id: 49, name: "Lesley", faction: ["Mystic Meow"], role: ["Marksman"], gold: 5, icon: "icons/lesley.png" },
-            { id: 50, name: "Julian", faction: ["Mystic Meow"], role: ["Mage", "Phasewarper"], gold: 3, icon: "icons/julian.png" },
-            { id: 51, name: "Edith", faction: ["Beyond the Clouds"], role: ["Defender"], gold: 5, icon: "icons/edith.png" },
-            { id: 52, name: "Xavier", faction: ["Beyond the Clouds"], role: ["Stargazer"], gold: 3, icon: "icons/xavier.png" },
-            { id: 53, name: "Natalia", faction: ["Beyond the Clouds"], role: ["Swift blade"], gold: 2, icon: "icons/natalia.png" }
-        ];
-
-        let boardState = Array(21).fill(null), benchState = Array(8).fill(null);
-        let currentView = 'faction', currentBoardCounts = {};
-        let selectedSource = null; 
-
-        function switchView(view) { currentView = view; renderPool(); }
-
-        function initGrid(id, size, className) {
-            const el = document.getElementById(id);
-            for (let i = 0; i < size; i++) {
-                const slot = document.createElement('div');
-                slot.className = className; slot.dataset.index = i; slot.dataset.type = id;
-                slot.onclick = () => handleSlotClick(id, i);
-                el.appendChild(slot);
-            }
-        }
-        initGrid('board', 21, 'board-slot');
-        initGrid('bench', 8, 'board-slot bench-slot');
-
-        function handleSlotClick(type, index) {
-            const arr = (type === 'board' ? boardState : benchState);
-            const currentHero = arr[index];
-
-            if (selectedSource) {
-                // Letakkan hero ke slot
-                if (selectedSource.type === 'pool') {
-                    arr[index] = { ...selectedSource.hero, star: 1 };
-                } else {
-                    const srcArr = (selectedSource.type === 'board' ? boardState : benchState);
-                    const temp = arr[index];
-                    arr[index] = srcArr[selectedSource.index];
-                    srcArr[selectedSource.index] = temp;
-                }
-                selectedSource = null;
-            } else if (currentHero) {
-                // Pilih hero dari papan/bench untuk dipindah atau dihapus (double click manual = reset hero)
-                selectedSource = { type, index };
-            }
-            updateUI();
-        }
-
-        function renderPool() {
-            const poolEl = document.getElementById('hero-pool'); poolEl.innerHTML = "";
-            const searchVal = document.getElementById('searchHero').value.toLowerCase();
-            const cmdLvl = document.getElementById('cmd-lvl').value;
-            const categories = [...new Set(heroes.flatMap(h => currentView === 'faction' ? h.faction : h.role))].sort();
-
-            categories.forEach(cat => {
-                const heroesInCat = heroes.filter(h => (currentView === 'faction' ? h.faction.includes(cat) : h.role.includes(cat)) && h.name.toLowerCase().includes(searchVal));
-                if (heroesInCat.length === 0) return;
-
-                const processed = heroesInCat.map(hero => {
-                    let gNames = []; [...hero.faction, ...hero.role].forEach(s => { if (currentBoardCounts[s]) gNames.push(s); });
-                    let prob = shopProb[cmdLvl][hero.gold - 1] || 0;
-                    return { ...hero, gNames, prob, score: (gNames.length * 1000) + prob };
-                }).sort((a, b) => b.score - a.score);
-
-                const section = document.createElement('div');
-                const maxGain = processed[0].gNames.length;
-                let pClass = (currentBoardCounts.hasOwnProperty(cat) || Object.keys(currentBoardCounts).length === 0) ? (maxGain >= 1 ? 'priority-high' : 'priority-mid') : 'dimmed';
-                
-                section.className = `category-section p-2 rounded-lg border-l-4 mb-2 ${pClass}`;
-                section.style.borderColor = synergyConfig[cat]?.hex || "#334155";
-                section.innerHTML = `<h3 class="text-[9px] font-black uppercase mb-2" style="color: ${synergyConfig[cat]?.hex}">${cat}</h3>`;
-                
-                const grid = document.createElement('div'); grid.className = "grid grid-cols-5 md:grid-cols-4 gap-2";
-                processed.forEach(hero => {
-                    const img = document.createElement('img');
-                    img.src = fixPath(hero.icon);
-                    const isOnBoard = boardState.some(h => h && h.id === hero.id);
-                    let rec = "";
-                    if (!isOnBoard && Object.keys(currentBoardCounts).length > 0) {
-                        if (hero.gNames.length >= 2) rec = "hero-rec-high";
-                        else if (hero.gNames.length === 1) rec = "hero-rec-mid";
-                    }
-
-                    const isSel = (selectedSource?.type === 'pool' && selectedSource.hero.id === hero.id);
-                    img.className = `pool-item ${rec} ${isSel ? 'selected-hero' : ''}`;
-                    img.onclick = (e) => { e.stopPropagation(); selectedSource = { type: 'pool', hero }; updateUI(); };
-                    
-                    // Tooltip
-                    img.onmouseenter = (e) => {
-                        const tooltip = document.getElementById('custom-tooltip');
-                        tooltip.style.display = 'block';
-                        let gStr = hero.gNames.map(gn => `<span style="color:${synergyConfig[gn]?.hex || '#fff'}">${gn}</span>`).join(", ");
-                        tooltip.innerHTML = `<b>${hero.name}</b> (${hero.gold}G)<br>Muncul: ${hero.prob}%<br>Benefit: ${hero.gNames.length > 0 ? gStr : '-'}`;
-                    };
-                    img.onmousemove = (e) => { 
-                        const tooltip = document.getElementById('custom-tooltip');
-                        tooltip.style.left = e.clientX + 10 + 'px'; 
-                        tooltip.style.top = e.clientY + 10 + 'px'; 
-                    };
-                    img.onmouseleave = () => document.getElementById('custom-tooltip').style.display = 'none';
-
-                    grid.appendChild(img);
-                });
-                section.appendChild(grid); poolEl.appendChild(section);
-            });
-        }
-
-        function updateUI() {
-            currentBoardCounts = {}; const uniqueIds = new Set();
-            boardState.forEach(h => { if (h && !uniqueIds.has(h.id)) { uniqueIds.add(h.id); [...h.faction, ...h.role].forEach(t => currentBoardCounts[t] = (currentBoardCounts[t] || 0) + 1); } });
-
-            const renderGrid = (type, state, selector) => {
-                const slots = document.querySelectorAll(selector);
-                state.forEach((hero, i) => {
-                    slots[i].innerHTML = ""; 
-                    slots[i].className = `board-slot ${type === 'bench' ? 'bench-slot' : ''}`;
-                    if (selectedSource && selectedSource.type === type && selectedSource.index === i) slots[i].classList.add('selected-hero');
-
-                    if (hero) {
-                        const container = document.createElement('div'); container.className = "hero-container";
-                        const img = document.createElement('img'); img.src = fixPath(hero.icon); img.className = "hero-icon";
-                        
-                        const starDiv = document.createElement('div'); starDiv.className = "star-level";
-                        for(let s=0; s<hero.star; s++) starDiv.innerHTML += '<span class="star">★</span>';
-                        
-                        if (hero.star < 3) {
-                            const btn = document.createElement('div'); btn.className = "btn-lvlup"; btn.innerText = "+";
-                            btn.onclick = (e) => { e.stopPropagation(); if (hero.star < 3) hero.star++; updateUI(); }; 
-                            slots[i].appendChild(btn);
-                        }
-
-                        if (type === 'bench') {
-                            let gn = []; [...hero.faction, ...hero.role].forEach(s => { if (currentBoardCounts[s]) gn.push(s); });
-                            if (gn.length >= 2) container.classList.add('hero-rec-high'); else if (gn.length === 1) container.classList.add('hero-rec-mid');
-                        }
-
-                        container.appendChild(img); container.appendChild(starDiv);
-                        slots[i].appendChild(container);
-                        if (hero.star === 3) slots[i].classList.add('max-level-glow');
-                        if (type === 'board') {
-                            let bc = "#3b82f6", hg = 0;
-                            [...hero.faction, ...hero.role].forEach(t => { if (currentBoardCounts[t] >= 2 && currentBoardCounts[t] > hg) { hg = currentBoardCounts[t]; bc = synergyConfig[t]?.hex || "#fff"; } });
-                            if (hg > 0) { slots[i].style.borderColor = bc; slots[i].style.borderWidth = "4px"; slots[i].style.borderStyle = "solid"; }
-                        }
-                    }
-                });
-            };
-            renderGrid('board', boardState, '#board .board-slot');
-            renderGrid('bench', benchState, '#bench .board-slot');
-
-            const output = document.getElementById('synergy-output'); output.innerHTML = "";
-            Object.entries(currentBoardCounts).sort((a,b) => b[1] - a[1]).forEach(([name, count]) => {
-                const config = synergyConfig[name] || { hex: "#4b5563", icon: "icons/default.png" };
-                const div = document.createElement('div'); 
-                div.className = `p-2 rounded-lg mb-1 flex items-center gap-2 ${count<2?'opacity-40':'shadow-lg'}`;
-                div.style.backgroundColor = config.hex;
-                div.style.color = (parseInt(config.hex.replace('#',''), 16) > 0xffffff/2) ? 'black' : 'white';
-                div.innerHTML = `<img src="${fixPath(config.icon)}" class="contributor-icon w-4 h-4"><div class="flex-1 font-black text-[9px] uppercase">${name}</div><span class="font-black text-[10px]">${count}</span>`;
-                output.appendChild(div);
-            });
-            renderPool();
-        }
+    <!-- LEFT: TABLE & CARDS (7 Cols) -->
+    <div class="lg:col-span-7 space-y-5">
+      <div class="board-felt rounded-3xl p-4 sm:p-6 shadow-2xl relative">
         
-        function clearAll() { 
-            boardState.fill(null); benchState.fill(null); 
-            selectedSource = null; updateUI(); 
+        <!-- Opponents Slider & Strength POV -->
+        <div class="bg-black/45 backdrop-blur-md rounded-2xl p-3.5 border border-emerald-500/20 mb-5">
+          <div class="flex justify-between items-center mb-1.5">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              <span class="text-xs uppercase font-extrabold tracking-wider text-emerald-300">Jumlah Lawan di Meja</span>
+            </div>
+            <span id="opponentsCountBadge" class="bg-amber-400 text-slate-950 text-xs px-2.5 py-0.5 rounded-full font-black shadow">
+              3 Lawan
+            </span>
+          </div>
+          
+          <div class="flex items-center gap-3">
+            <span class="text-[11px] text-slate-400 font-bold">1</span>
+            <input id="opponentsInput" type="range" min="1" max="9" value="3" 
+                   class="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-amber-400">
+            <span class="text-[11px] text-slate-400 font-bold">9</span>
+          </div>
+          <p class="text-[11px] text-emerald-300/70 mt-1 italic leading-tight">
+            Semakin banyak lawan, semakin tinggi kemungkinan salah satu dari mereka memegang kartu yang lebih kuat.
+          </p>
+        </div>
+
+        <!-- HERO CARDS -->
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs uppercase font-extrabold tracking-widest text-amber-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              Kartu Tangan Anda (Hole Cards)
+            </span>
+            <span id="currentHandRankBadge" class="text-xs text-amber-200/90 font-bold bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded-lg">
+              Belum Lengkap
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 max-w-[260px] mx-auto sm:mx-0">
+            <!-- Hero 0 -->
+            <div id="slot-hero-0" onclick="openPickerModal('hero', 0)"
+                 class="card-slot cursor-pointer bg-slate-900/80 border-2 border-dashed border-emerald-400/30 rounded-2xl flex flex-col items-center justify-center p-2 hover:border-amber-400 shadow-lg">
+              <span class="text-xs text-slate-400 font-semibold">Kartu 1</span>
+              <span class="text-xl text-slate-600 mt-1 font-bold">+</span>
+            </div>
+            <!-- Hero 1 -->
+            <div id="slot-hero-1" onclick="openPickerModal('hero', 1)"
+                 class="card-slot cursor-pointer bg-slate-900/80 border-2 border-dashed border-emerald-400/30 rounded-2xl flex flex-col items-center justify-center p-2 hover:border-amber-400 shadow-lg">
+              <span class="text-xs text-slate-400 font-semibold">Kartu 2</span>
+              <span class="text-xl text-slate-600 mt-1 font-bold">+</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- COMMUNITY CARDS -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs uppercase font-extrabold tracking-widest text-emerald-300">
+              Kartu Komunitas (Community Board)
+            </span>
+            <span class="text-[11px] text-slate-400">Klik slot untuk isi / ganti</span>
+          </div>
+
+          <div class="grid grid-cols-5 gap-2 sm:gap-3">
+            <div id="slot-board-0" onclick="openPickerModal('board', 0)" class="card-slot cursor-pointer bg-slate-900/80 border-2 border-dashed border-emerald-400/30 rounded-2xl flex flex-col items-center justify-center p-1 sm:p-2 hover:border-amber-400 shadow">
+              <span class="text-[10px] sm:text-xs text-slate-400 font-medium">Flop 1</span>
+              <span class="text-base text-slate-600 font-bold">+</span>
+            </div>
+            <div id="slot-board-1" onclick="openPickerModal('board', 1)" class="card-slot cursor-pointer bg-slate-900/80 border-2 border-dashed border-emerald-400/30 rounded-2xl flex flex-col items-center justify-center p-1 sm:p-2 hover:border-amber-400 shadow">
+              <span class="text-[10px] sm:text-xs text-slate-400 font-medium">Flop 2</span>
+              <span class="text-base text-slate-600 font-bold">+</span>
+            </div>
+            <div id="slot-board-2" onclick="openPickerModal('board', 2)" class="card-slot cursor-pointer bg-slate-900/80 border-2 border-dashed border-emerald-400/30 rounded-2xl flex flex-col items-center justify-center p-1 sm:p-2 hover:border-amber-400 shadow">
+              <span class="text-[10px] sm:text-xs text-slate-400 font-medium">Flop 3</span>
+              <span class="text-base text-slate-600 font-bold">+</span>
+            </div>
+            <div id="slot-board-3" onclick="openPickerModal('board', 3)" class="card-slot cursor-pointer bg-slate-900/80 border-2 border-dashed border-emerald-400/30 rounded-2xl flex flex-col items-center justify-center p-1 sm:p-2 hover:border-amber-400 shadow">
+              <span class="text-[10px] sm:text-xs text-slate-400 font-medium">Turn</span>
+              <span class="text-base text-slate-600 font-bold">+</span>
+            </div>
+            <div id="slot-board-4" onclick="openPickerModal('board', 4)" class="card-slot cursor-pointer bg-slate-900/80 border-2 border-dashed border-emerald-400/30 rounded-2xl flex flex-col items-center justify-center p-1 sm:p-2 hover:border-amber-400 shadow">
+              <span class="text-[10px] sm:text-xs text-slate-400 font-medium">River</span>
+              <span class="text-base text-slate-600 font-bold">+</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Quick Action / Status Bar -->
+      <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-2xl p-3 px-4">
+        <div class="flex items-center gap-2">
+          <div id="statusPulse" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+          <span id="statusText" class="text-xs text-slate-300 font-medium">Siap menghitung 20.000 simulasi showdown</span>
+        </div>
+        <button onclick="runCalculation()" class="text-xs px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg transition active:scale-95 shadow">
+          Recalculate
+        </button>
+      </div>
+    </div>
+
+    <!-- RIGHT: PROBABILITY DASHBOARD & ODDS (5 Cols) -->
+    <div class="lg:col-span-5 space-y-5">
+      
+      <!-- Equity Card -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl relative">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-xs uppercase font-black tracking-widest text-slate-400">
+            Peluang Menang (Equity)
+          </h2>
+          <span id="simulationBadge" class="text-[11px] text-emerald-400 font-mono bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-md">
+            20,000 Rounds
+          </span>
+        </div>
+
+        <!-- Meter Bar -->
+        <div class="h-4 w-full bg-slate-950 rounded-full overflow-hidden flex border border-slate-800 mb-4 shadow-inner">
+          <div id="winBar" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+          <div id="tieBar" class="h-full bg-amber-400 transition-all duration-300" style="width: 0%"></div>
+          <div id="lossBar" class="h-full bg-rose-600 transition-all duration-300" style="width: 100%"></div>
+        </div>
+
+        <!-- Statistics Values -->
+        <div class="grid grid-cols-3 gap-2.5 text-center mb-5">
+          <div class="p-2.5 bg-slate-950/80 border border-emerald-500/30 rounded-2xl">
+            <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">Menang</span>
+            <span id="winRateVal" class="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5 block">0.0%</span>
+          </div>
+          <div class="p-2.5 bg-slate-950/80 border border-amber-500/30 rounded-2xl">
+            <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Split / Seri</span>
+            <span id="tieRateVal" class="text-xl sm:text-2xl font-black text-amber-300 mt-0.5 block">0.0%</span>
+          </div>
+          <div class="p-2.5 bg-slate-950/80 border border-rose-500/30 rounded-2xl">
+            <span class="text-[10px] font-bold text-rose-400 uppercase tracking-wider block">Kalah</span>
+            <span id="lossRateVal" class="text-xl sm:text-2xl font-black text-rose-400 mt-0.5 block">100%</span>
+          </div>
+        </div>
+
+        <!-- NEW: LOSS BREAKDOWN / THREAT ANALYSIS -->
+        <div class="mb-5 bg-rose-950/30 border border-rose-500/30 rounded-2xl p-3.5 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs uppercase font-extrabold tracking-widest text-rose-300 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              Bedah Ancaman: Mengapa Anda Kalah?
+            </h3>
+            <span id="lossRateTag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-900/60 text-rose-200 border border-rose-700/60 font-bold">
+              Kalah: 0%
+            </span>
+          </div>
+
+          <!-- Explanation Summary -->
+          <p id="lossAnalysisSummary" class="text-xs text-rose-200/90 leading-relaxed font-medium">
+            Pilih 2 kartu tangan Anda untuk memulai analisis ancaman kombinasi kartu lawan.
+          </p>
+
+          <!-- Top Threat Categories -->
+          <div id="threatHandTypesContainer" class="space-y-1.5 pt-1">
+            <!-- Populated via JS -->
+          </div>
+
+          <!-- Specific Opponent Hole Cards Scenarios -->
+          <div class="pt-2 border-t border-rose-900/40">
+            <span class="text-[10px] uppercase font-bold text-rose-300 tracking-wider block mb-1.5">
+              Contoh Kartu Tangan Lawan Yang Mengalahkan Anda:
+            </span>
+            <div id="threatExamplesList" class="space-y-1.5 text-xs text-slate-300">
+              <div class="text-[11px] text-slate-500 italic">Belum ada simulasi.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hand Outcome Distributions -->
+        <div>
+          <h3 class="text-xs uppercase font-extrabold tracking-widest text-slate-400 mb-2.5 flex justify-between">
+            <span>Distribusi Tangan Akhir Anda</span>
+            <span class="text-[10px] text-slate-500">Showdown</span>
+          </h3>
+          <div id="handRankingsList" class="space-y-1.5 text-xs max-h-44 overflow-y-auto pr-1">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Pot Odds & EV Advisor -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-2xl">
+        <h2 class="text-xs uppercase font-black tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Pot Odds & Expected Value (EV)
+        </h2>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="text-[10px] text-slate-400 font-bold block mb-1">Total Pot di Meja ($)</label>
+            <input id="potSizeInput" type="number" min="0" value="120" 
+                   class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 font-bold block mb-1">Biaya Call ($)</label>
+            <input id="callSizeInput" type="number" min="0" value="30" 
+                   class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-amber-400">
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-800 space-y-1.5 text-xs">
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">Pot Odds Diperlukan:</span>
+            <span id="potOddsPercent" class="font-bold text-amber-400">20.0%</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">Total Equity Anda:</span>
+            <span id="equityAgainstOdds" class="font-bold text-emerald-400">0.0%</span>
+          </div>
+          <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <span class="font-bold text-slate-300">Keputusan Matematika:</span>
+            <span id="decisionBadge" class="px-2.5 py-1 rounded-lg font-black uppercase bg-slate-800 text-slate-400">
+              Pilih Kartu
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ============================================================
+       CARD SELECTION POPUP MODAL (NO SCROLLING NEEDED)
+       ============================================================ -->
+  <div id="cardPickerModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-5 shadow-2xl relative animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <div>
+          <h3 id="modalSlotTitle" class="text-sm font-bold text-slate-100">Pilih Kartu</h3>
+          <p class="text-[11px] text-slate-400">Pilih kembang lalu klik nilai kartu</p>
+        </div>
+        <button onclick="closePickerModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 font-bold transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Step 1: Suit Selection Group -->
+      <div class="my-4">
+        <label class="text-[11px] font-bold uppercase tracking-wider text-amber-400 block mb-2">1. Pilih Kembang (Suit)</label>
+        <div class="grid grid-cols-4 gap-2">
+          <!-- Spades -->
+          <button type="button" onclick="selectSuitGroup(0)" id="suit-btn-0"
+                  class="suit-btn h-12 rounded-xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center transition active:scale-95">
+            <span class="text-lg leading-none color-spade text-slate-100">♠</span>
+            <span class="text-[10px] text-slate-300 font-bold mt-1">Spade</span>
+          </button>
+          <!-- Hearts -->
+          <button type="button" onclick="selectSuitGroup(1)" id="suit-btn-1"
+                  class="suit-btn h-12 rounded-xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center transition active:scale-95">
+            <span class="text-lg leading-none color-heart">♥</span>
+            <span class="text-[10px] text-rose-300 font-bold mt-1">Heart</span>
+          </button>
+          <!-- Diamonds -->
+          <button type="button" onclick="selectSuitGroup(2)" id="suit-btn-2"
+                  class="suit-btn h-12 rounded-xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center transition active:scale-95">
+            <span class="text-lg leading-none color-diamond">♦</span>
+            <span class="text-[10px] text-blue-300 font-bold mt-1">Diamond</span>
+          </button>
+          <!-- Clubs -->
+          <button type="button" onclick="selectSuitGroup(3)" id="suit-btn-3"
+                  class="suit-btn h-12 rounded-xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center transition active:scale-95">
+            <span class="text-lg leading-none color-club">♣</span>
+            <span class="text-[10px] text-emerald-300 font-bold mt-1">Club</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Rank Selection Grid -->
+      <div class="mb-4">
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-[11px] font-bold uppercase tracking-wider text-amber-400">2. Pilih Nilai Kartu</label>
+          <span id="activeSuitSymbol" class="text-sm font-bold">♠ Spade</span>
+        </div>
+        <!-- 13 Cards (2 through Ace) -->
+        <div id="ranksGridContainer" class="grid grid-cols-5 sm:grid-cols-7 gap-2">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Modal Footer Action -->
+      <div class="flex justify-between items-center pt-3 border-t border-slate-800">
+        <button type="button" onclick="clearSelectedSlot()" class="text-xs text-rose-400 hover:text-rose-300 font-bold px-3 py-1.5 rounded-lg hover:bg-rose-950/40 transition">
+          Hapus Kartu Dari Slot Ini
+        </button>
+        <button type="button" onclick="closePickerModal()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl transition">
+          Batal
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================
+       STATE & CONSTANTS
+       ============================================================ */
+    const SUITS = [
+      { id: 's', symbol: '♠', name: 'Spade', colorClass: 'color-spade', borderClass: 'border-slate-800' },
+      { id: 'h', symbol: '♥', name: 'Heart', colorClass: 'color-heart', borderClass: 'border-red-600' },
+      { id: 'd', symbol: '♦', name: 'Diamond', colorClass: 'color-diamond', borderClass: 'border-red-600' },
+      { id: 'c', symbol: '♣', name: 'Club', colorClass: 'color-club', borderClass: 'border-slate-800' }
+    ];
+
+    const RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+    const RANK_LABELS = {
+      'T': '10', 'J': 'J', 'Q': 'Q', 'K': 'K', 'A': 'A'
+    };
+
+    const HAND_CATEGORIES = [
+      'High Card',
+      'One Pair',
+      'Two Pair',
+      'Three of a Kind',
+      'Straight',
+      'Flush',
+      'Full House',
+      'Four of a Kind',
+      'Straight Flush'
+    ];
+
+    const state = {
+      hero: [null, null],
+      board: [null, null, null, null, null],
+      opponents: 3,
+      currentSlot: { type: 'hero', index: 0 },
+      selectedSuitIndex: 0,
+      isSimulating: false,
+      lastCalculatedEquity: 0
+    };
+
+    /* Card Representation:
+       Integer 0..51
+       rankIndex = Math.floor(c / 4)
+       suitIndex = c % 4
+    */
+
+    /* ============================================================
+       MODAL PICKER CONTROLS
+       ============================================================ */
+    function openPickerModal(type, index) {
+      state.currentSlot = { type, index };
+
+      // Set Title
+      const slotName = type === 'hero' 
+        ? `Kartu Tangan ${index + 1}` 
+        : ['Flop 1', 'Flop 2', 'Flop 3', 'Turn', 'River'][index];
+      document.getElementById('modalSlotTitle').innerText = `Pilih Kartu: ${slotName}`;
+
+      // Default suit from current slot card if exists, else keep current
+      const currentCard = state[type][index];
+      if (currentCard !== null) {
+        state.selectedSuitIndex = currentCard % 4;
+      }
+      selectSuitGroup(state.selectedSuitIndex);
+
+      document.getElementById('cardPickerModal').classList.remove('hidden');
+    }
+
+    function closePickerModal() {
+      document.getElementById('cardPickerModal').classList.add('hidden');
+    }
+
+    function selectSuitGroup(suitIndex) {
+      state.selectedSuitIndex = suitIndex;
+
+      // Update Active Suit Buttons
+      for (let s = 0; s < 4; s++) {
+        const btn = document.getElementById(`suit-btn-${s}`);
+        if (s === suitIndex) {
+          btn.classList.add('active', 'border-amber-400', 'bg-slate-700');
+          btn.classList.remove('bg-slate-800');
+        } else {
+          btn.classList.remove('active', 'border-amber-400', 'bg-slate-700');
+          btn.classList.add('bg-slate-800');
         }
-        document.getElementById('searchHero').addEventListener('input', () => renderPool());
-        renderPool();
-    </script>
+      }
+
+      const activeSuit = SUITS[suitIndex];
+      document.getElementById('activeSuitSymbol').innerHTML = `<span class="${activeSuit.colorClass} text-base">${activeSuit.symbol}</span> ${activeSuit.name}`;
+
+      renderRankGridForSuit(suitIndex);
+    }
+
+    function renderRankGridForSuit(suitIndex) {
+      const container = document.getElementById('ranksGridContainer');
+      container.innerHTML = '';
+
+      // Set of cards currently in use on table
+      const usedCards = new Set();
+      state.hero.forEach(c => { if (c !== null) usedCards.add(c); });
+      state.board.forEach(c => { if (c !== null) usedCards.add(c); });
+
+      const suit = SUITS[suitIndex];
+
+      RANKS.forEach((rank, rankIdx) => {
+        const cardId = rankIdx * 4 + suitIndex;
+        const isCurrentThisSlot = state[state.currentSlot.type][state.currentSlot.index] === cardId;
+        const isUsedElsewhere = usedCards.has(cardId) && !isCurrentThisSlot;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.disabled = isUsedElsewhere;
+
+        const displayLabel = RANK_LABELS[rank] || rank;
+
+        if (isUsedElsewhere) {
+          btn.className = 'h-11 rounded-xl bg-slate-950/50 border border-slate-800 text-slate-600 font-bold flex flex-col items-center justify-center cursor-not-allowed opacity-30';
+          btn.innerHTML = `<span class="text-xs line-through">${displayLabel}</span>`;
+        } else {
+          const isSelected = isCurrentThisSlot ? 'ring-2 ring-amber-400 bg-white' : 'bg-slate-800 hover:bg-slate-700';
+          btn.className = `h-11 rounded-xl border border-slate-700 ${isSelected} flex flex-col items-center justify-center transition active:scale-95 shadow`;
+          btn.innerHTML = `
+            <span class="text-sm font-black ${isCurrentThisSlot ? suit.colorClass : 'text-slate-100'}">${displayLabel}</span>
+            <span class="text-[10px] leading-none ${suit.colorClass}">${suit.symbol}</span>
+          `;
+          btn.onclick = () => selectCardAndClose(cardId);
+        }
+
+        container.appendChild(btn);
+      });
+    }
+
+    function selectCardAndClose(cardId) {
+      const { type, index } = state.currentSlot;
+      state[type][index] = cardId;
+      renderSlot(type, index);
+      closePickerModal();
+
+      // Automatically advance to next empty slot if convenient
+      autoAdvanceSlot();
+
+      // Trigger automatic equity recalculation
+      runCalculation();
+    }
+
+    function clearSelectedSlot() {
+      const { type, index } = state.currentSlot;
+      state[type][index] = null;
+      renderSlot(type, index);
+      closePickerModal();
+      runCalculation();
+    }
+
+    function autoAdvanceSlot() {
+      // If hero card 0 was set and hero 1 is empty, target hero 1 next time
+      if (state.currentSlot.type === 'hero' && state.currentSlot.index === 0 && state.hero[1] === null) {
+        state.currentSlot = { type: 'hero', index: 1 };
+      }
+    }
+
+    /* ============================================================
+       SLOT DISPLAY RENDERING
+       ============================================================ */
+    function renderSlot(type, index) {
+      const el = document.getElementById(`slot-${type}-${index}`);
+      const cardId = state[type][index];
+
+      if (cardId === null || cardId === undefined) {
+        const placeholder = type === 'hero' ? `Kartu ${index + 1}` : ['Flop 1', 'Flop 2', 'Flop 3', 'Turn', 'River'][index];
+        el.className = 'card-slot cursor-pointer bg-slate-900/80 border-2 border-dashed border-emerald-400/30 rounded-2xl flex flex-col items-center justify-center p-2 hover:border-amber-400 shadow-lg';
+        el.innerHTML = `
+          <span class="text-[10px] sm:text-xs text-slate-400 font-semibold">${placeholder}</span>
+          <span class="text-base sm:text-xl text-slate-600 mt-1 font-bold">+</span>
+        `;
+      } else {
+        const rank = RANKS[Math.floor(cardId / 4)];
+        const suit = SUITS[cardId % 4];
+        const displayRank = RANK_LABELS[rank] || rank;
+
+        el.className = `card-slot cursor-pointer poker-card-face rounded-2xl flex flex-col justify-between p-2 sm:p-2.5 transition-all transform hover:-translate-y-1 ${suit.colorClass}`;
+        el.innerHTML = `
+          <div class="w-full flex justify-between items-center text-xs sm:text-sm font-black leading-none ${suit.colorClass}">
+            <span>${displayRank}</span>
+            <span class="text-xs sm:text-sm leading-none">${suit.symbol}</span>
+          </div>
+          <div class="text-center text-2xl sm:text-4xl font-black leading-none my-auto select-none ${suit.colorClass}">${suit.symbol}</div>
+          <div class="w-full flex justify-between items-center text-xs sm:text-sm font-black leading-none rotate-180 ${suit.colorClass}">
+            <span>${displayRank}</span>
+            <span class="text-xs sm:text-sm leading-none">${suit.symbol}</span>
+          </div>
+        `;
+      }
+
+      updateCurrentMadeHandLabel();
+    }
+
+    function resetBoardOnly() {
+      state.board = [null, null, null, null, null];
+      for (let i = 0; i < 5; i++) renderSlot('board', i);
+      runCalculation();
+    }
+
+    function resetAllCards() {
+      state.hero = [null, null];
+      state.board = [null, null, null, null, null];
+      for (let i = 0; i < 2; i++) renderSlot('hero', i);
+      for (let i = 0; i < 5; i++) renderSlot('board', i);
+      resetMetrics();
+      runCalculation();
+    }
+
+    function setSampleHand() {
+      // Ace of Spades + King of Spades (Big Slick Suited)
+      state.hero = [12 * 4 + 0, 11 * 4 + 0]; // As, Ks
+      // Flop: Queen of Spades, 10 of Hearts, 2 of Diamonds
+      state.board = [10 * 4 + 0, 8 * 4 + 1, 0 * 4 + 2, null, null];
+      for (let i = 0; i < 2; i++) renderSlot('hero', i);
+      for (let i = 0; i < 5; i++) renderSlot('board', i);
+      runCalculation();
+    }
+
+    /* ============================================================
+       HAND EVALUATION ENGINE (EXACT 7-CARD POKER HAND EVALUATOR)
+       Returns 32-bit score:
+       [24..31]: Category (0: High Card .. 8: Straight Flush)
+       [0..23]: Tie-breaking kickers
+       ============================================================ */
+    function evaluate7Cards(cards7) {
+      const rankCounts = new Uint8Array(15);
+      const suitCounts = new Uint8Array(4);
+      const suitCards = [[], [], [], []];
+
+      for (let i = 0; i < 7; i++) {
+        const c = cards7[i];
+        const r = (c >> 2) + 2; // Rank: 2..14
+        const s = c & 3;        // Suit: 0..3
+        rankCounts[r]++;
+        suitCounts[s]++;
+        suitCards[s].push(r);
+      }
+
+      // Check Flush / Straight Flush
+      for (let s = 0; s < 4; s++) {
+        if (suitCounts[s] >= 5) {
+          const ranks = suitCards[s].sort((a, b) => b - a);
+          // Check Straight Flush
+          const sfHigh = getStraightHighCard(ranks);
+          if (sfHigh > 0) {
+            return (8 << 24) | sfHigh; // Straight Flush
+          }
+          // Regular Flush
+          let flushVal = (5 << 24);
+          for (let k = 0; k < 5; k++) {
+            flushVal |= (ranks[k] << (16 - k * 4));
+          }
+          return flushVal;
+        }
+      }
+
+      // Collect Multiples
+      let quads = 0;
+      let trips = [];
+      let pairs = [];
+      let kickers = [];
+
+      for (let r = 14; r >= 2; r--) {
+        const count = rankCounts[r];
+        if (count === 4) quads = r;
+        else if (count === 3) trips.push(r);
+        else if (count === 2) pairs.push(r);
+        else if (count === 1) kickers.push(r);
+      }
+
+      // Four of a Kind
+      if (quads > 0) {
+        let kicker = 0;
+        for (let r = 14; r >= 2; r--) {
+          if (r !== quads && rankCounts[r] > 0) { kicker = r; break; }
+        }
+        return (7 << 24) | (quads << 16) | kicker;
+      }
+
+      // Full House
+      if (trips.length >= 2) {
+        return (6 << 24) | (trips[0] << 16) | (trips[1] << 8);
+      }
+      if (trips.length === 1 && pairs.length >= 1) {
+        return (6 << 24) | (trips[0] << 16) | (pairs[0] << 8);
+      }
+
+      // Straight
+      const uniqueRanks = [];
+      for (let r = 14; r >= 2; r--) {
+        if (rankCounts[r] > 0) uniqueRanks.push(r);
+      }
+      const straightHigh = getStraightHighCard(uniqueRanks);
+      if (straightHigh > 0) {
+        return (4 << 24) | straightHigh;
+      }
+
+      // Three of a Kind
+      if (trips.length === 1) {
+        const t = trips[0];
+        let k1 = 0, k2 = 0;
+        for (let r = 14; r >= 2; r--) {
+          if (r !== t && rankCounts[r] > 0) {
+            if (!k1) k1 = r;
+            else if (!k2) { k2 = r; break; }
+          }
+        }
+        return (3 << 24) | (t << 16) | (k1 << 8) | k2;
+      }
+
+      // Two Pair
+      if (pairs.length >= 2) {
+        const p1 = pairs[0];
+        const p2 = pairs[1];
+        let kicker = 0;
+        for (let r = 14; r >= 2; r--) {
+          if (r !== p1 && r !== p2 && rankCounts[r] > 0) { kicker = r; break; }
+        }
+        return (2 << 24) | (p1 << 16) | (p2 << 8) | kicker;
+      }
+
+      // One Pair
+      if (pairs.length === 1) {
+        const p = pairs[0];
+        let k1 = 0, k2 = 0, k3 = 0;
+        for (let r = 14; r >= 2; r--) {
+          if (r !== p && rankCounts[r] > 0) {
+            if (!k1) k1 = r;
+            else if (!k2) k2 = r;
+            else if (!k3) { k3 = r; break; }
+          }
+        }
+        return (1 << 24) | (p << 16) | (k1 << 12) | (k2 << 8) | k3;
+      }
+
+      // High Card
+      let highCardScore = (0 << 24);
+      let count = 0;
+      for (let r = 14; r >= 2 && count < 5; r--) {
+        if (rankCounts[r] > 0) {
+          highCardScore |= (r << (16 - count * 4));
+          count++;
+        }
+      }
+      return highCardScore;
+    }
+
+    function getStraightHighCard(ranksSortedDesc) {
+      const list = ranksSortedDesc.slice();
+      if (list.includes(14)) list.push(1); // Ace also counts as 1 (wheel: A-2-3-4-5)
+
+      let streak = 1;
+      for (let i = 0; i < list.length - 1; i++) {
+        if (list[i] - 1 === list[i + 1]) {
+          streak++;
+          if (streak >= 5) return list[i - 3];
+        } else {
+          streak = 1;
+        }
+      }
+      return -1;
+    }
+
+    // Accurate 5-card evaluator for calculating made hands before River
+    function evaluate5Cards(cards5) {
+      const rankCounts = new Uint8Array(15);
+      const suitCounts = new Uint8Array(4);
+
+      for (let i = 0; i < 5; i++) {
+        const c = cards5[i];
+        const r = (c >> 2) + 2;
+        const s = c & 3;
+        rankCounts[r]++;
+        suitCounts[s]++;
+      }
+
+      const isFlush = suitCounts.some(cnt => cnt === 5);
+      const uniqueRanks = [];
+      for (let r = 14; r >= 2; r--) {
+        if (rankCounts[r] > 0) uniqueRanks.push(r);
+      }
+      const straightHigh = getStraightHighCard(uniqueRanks);
+      const isStraight = straightHigh > 0;
+
+      if (isFlush && isStraight) return (8 << 24) | straightHigh;
+
+      let quads = 0;
+      let trips = 0;
+      let pairs = [];
+      for (let r = 14; r >= 2; r--) {
+        if (rankCounts[r] === 4) quads = r;
+        else if (rankCounts[r] === 3) trips = r;
+        else if (rankCounts[r] === 2) pairs.push(r);
+      }
+
+      if (quads > 0) return (7 << 24) | (quads << 16);
+      if (trips > 0 && pairs.length > 0) return (6 << 24) | (trips << 16) | pairs[0];
+      if (isFlush) return (5 << 24);
+      if (isStraight) return (4 << 24) | straightHigh;
+      if (trips > 0) return (3 << 24) | (trips << 16);
+      if (pairs.length >= 2) return (2 << 24) | (pairs[0] << 16) | pairs[1];
+      if (pairs.length === 1) return (1 << 24) | (pairs[0] << 16);
+      return 0; // High card
+    }
+
+    // Helper to evaluate arbitrary card count (5 to 7 cards) by checking all 5-card combinations
+    function evaluateArbitraryHand(cards) {
+      if (cards.length === 7) return evaluate7Cards(cards);
+      if (cards.length === 5) return evaluate5Cards(cards);
+
+      // If 6 cards (e.g. Flop + Turn), choose best 5 of 6
+      let bestScore = -1;
+      for (let i = 0; i < cards.length; i++) {
+        const subset = [];
+        for (let j = 0; j < cards.length; j++) {
+          if (j !== i) subset.push(cards[j]);
+        }
+        const score = evaluate5Cards(subset);
+        if (score > bestScore) bestScore = score;
+      }
+      return bestScore;
+    }
+
+    function updateCurrentMadeHandLabel() {
+      const badge = document.getElementById('currentHandRankBadge');
+      if (state.hero[0] === null || state.hero[1] === null) {
+        badge.innerText = 'Pilih 2 Kartu Tangan';
+        return;
+      }
+
+      const activeCards = [state.hero[0], state.hero[1]];
+      state.board.forEach(c => { if (c !== null) activeCards.push(c); });
+
+      if (activeCards.length < 5) {
+        badge.innerText = 'Pre-Flop (2 Kartu)';
+      } else {
+        const score = evaluateArbitraryHand(activeCards);
+        const cat = score >>> 24;
+        badge.innerText = HAND_CATEGORIES[cat];
+      }
+    }
+
+    /* ============================================================
+       ACCURATE MULTIPLAYER MONTE CARLO SIMULATOR
+       Calculates: You vs ALL N opponents.
+       Win condition: Hero hand > Opponent[0] AND Opponent[1] ...
+       ============================================================ */
+    function runCalculation() {
+      if (state.hero[0] === null || state.hero[1] === null) {
+        resetMetrics();
+        return;
+      }
+
+      const statusText = document.getElementById('statusText');
+      const statusPulse = document.getElementById('statusPulse');
+      statusPulse.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping';
+      statusText.innerText = `Menghitung probabilitas melawan ${state.opponents} lawan...`;
+
+      // Collect dead cards
+      const deadCards = new Set();
+      state.hero.forEach(c => deadCards.add(c));
+      const fixedBoard = [];
+      state.board.forEach(c => {
+        if (c !== null) {
+          deadCards.add(c);
+          fixedBoard.push(c);
+        }
+      });
+
+      // Build available deck
+      const availableDeck = [];
+      for (let i = 0; i < 52; i++) {
+        if (!deadCards.has(i)) availableDeck.push(i);
+      }
+
+      const totalSimulations = 20000;
+      const chunkSize = 4000;
+      let completedSims = 0;
+      let wins = 0;
+      let ties = 0;
+      let losses = 0;
+      const handDistributions = new Uint32Array(9);
+      const opponentWinningCategories = new Uint32Array(9);
+      const killerExamples = [];
+
+      const numOpponents = state.opponents;
+      const neededBoard = 5 - fixedBoard.length;
+      const totalNeededCards = neededBoard + (numOpponents * 2);
+
+      const deckLen = availableDeck.length;
+      const deckCopy = new Uint8Array(deckLen);
+
+      function runBatch() {
+        const batchEnd = Math.min(chunkSize, totalSimulations - completedSims);
+
+        for (let iter = 0; iter < batchEnd; iter++) {
+          // Shuffle only what we need (Fisher-Yates partial)
+          for (let d = 0; d < deckLen; d++) deckCopy[d] = availableDeck[d];
+
+          for (let i = 0; i < totalNeededCards; i++) {
+            const r = i + Math.floor(Math.random() * (deckLen - i));
+            const tmp = deckCopy[i];
+            deckCopy[i] = deckCopy[r];
+            deckCopy[r] = tmp;
+          }
+
+          // Complete Board
+          let cardPtr = 0;
+          const fullBoard = [
+            ...fixedBoard,
+            ...deckCopy.subarray(0, neededBoard)
+          ];
+          cardPtr += neededBoard;
+
+          // Hero Score (Always exactly 7 cards: 2 hole + 5 board)
+          const hero7 = [
+            state.hero[0], state.hero[1],
+            fullBoard[0], fullBoard[1], fullBoard[2], fullBoard[3], fullBoard[4]
+          ];
+          const heroScore = evaluate7Cards(hero7);
+          handDistributions[heroScore >>> 24]++;
+
+          // Multiplayer Comparison POV:
+          // Must beat the HIGHEST scoring opponent at the table
+          let highestOpponentScore = 0;
+          let bestOpponentCards = [0, 0];
+          for (let op = 0; op < numOpponents; op++) {
+            const op1 = deckCopy[cardPtr++];
+            const op2 = deckCopy[cardPtr++];
+            const op7 = [
+              op1, op2,
+              fullBoard[0], fullBoard[1], fullBoard[2], fullBoard[3], fullBoard[4]
+            ];
+            const opScore = evaluate7Cards(op7);
+            if (opScore > highestOpponentScore) {
+              highestOpponentScore = opScore;
+              bestOpponentCards = [op1, op2];
+            }
+          }
+
+          if (heroScore > highestOpponentScore) {
+            wins++;
+          } else if (heroScore === highestOpponentScore) {
+            ties++;
+          } else {
+            losses++;
+            const opponentCategory = highestOpponentScore >>> 24;
+            opponentWinningCategories[opponentCategory]++;
+
+            // Sample concrete defeat scenarios
+            if (killerExamples.length < 5 && Math.random() < 0.05) {
+              killerExamples.push({
+                heroCat: heroScore >>> 24,
+                opponentCat: opponentCategory,
+                oppCards: [bestOpponentCards[0], bestOpponentCards[1]],
+                newBoardCards: fullBoard.slice(fixedBoard.length),
+                sampleBoard: fullBoard.slice()
+              });
+            }
+          }
+        }
+
+        completedSims += batchEnd;
+
+        if (completedSims < totalSimulations) {
+          requestAnimationFrame(runBatch);
+        } else {
+          // Finished
+          statusPulse.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+          statusText.innerText = `Selesai: 20,000 putaran dianalisis vs ${state.opponents} lawan`;
+          displayResults(wins, ties, losses, totalSimulations, handDistributions, opponentWinningCategories, killerExamples);
+        }
+      }
+
+      requestAnimationFrame(runBatch);
+    }
+
+    function formatCardBadge(cardId) {
+      const rank = RANKS[Math.floor(cardId / 4)];
+      const suit = SUITS[cardId % 4];
+      const displayRank = RANK_LABELS[rank] || rank;
+      return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-white border border-slate-300 shadow-sm font-mono font-black text-xs ${suit.colorClass} select-none mr-1">${displayRank}${suit.symbol}</span>`;
+    }
+
+    function displayResults(wins, ties, losses, total, distributions, opponentWinningCategories, killerExamples) {
+      const winRate = (wins / total) * 100;
+      const tieRate = (ties / total) * 100;
+      const lossRate = (losses / total) * 100;
+      state.lastCalculatedEquity = winRate + (tieRate / 2);
+
+      document.getElementById('winRateVal').innerText = `${winRate.toFixed(1)}%`;
+      document.getElementById('tieRateVal').innerText = `${tieRate.toFixed(1)}%`;
+      document.getElementById('lossRateVal').innerText = `${lossRate.toFixed(1)}%`;
+
+      document.getElementById('winBar').style.width = `${winRate}%`;
+      document.getElementById('tieBar').style.width = `${tieRate}%`;
+      document.getElementById('lossBar').style.width = `${lossRate}%`;
+
+      // Update Threat / Loss Analysis Section
+      renderThreatAnalysis(lossRate, losses, opponentWinningCategories, killerExamples);
+
+      renderDistributionBars(distributions, total);
+      updatePotOddsAndEV();
+    }
+
+    function renderThreatAnalysis(lossRate, totalLosses, oppCategories, killerExamples) {
+      const lossTag = document.getElementById('lossRateTag');
+      const summary = document.getElementById('lossAnalysisSummary');
+      const threatsContainer = document.getElementById('threatHandTypesContainer');
+      const examplesContainer = document.getElementById('threatExamplesList');
+
+      lossTag.innerText = `Kalah: ${lossRate.toFixed(1)}%`;
+      threatsContainer.innerHTML = '';
+      examplesContainer.innerHTML = '';
+
+      if (lossRate < 0.1) {
+        summary.innerHTML = `<span class="text-emerald-300 font-bold">Posisi Dominan!</span> Hampir tidak ada kombinasi kartu lawan acak yang dapat mengejar tangan Anda.`;
+        examplesContainer.innerHTML = `<div class="text-[11px] text-slate-400">Peluang kekalahan mendekati 0%.</div>`;
+        return;
+      }
+
+      // Rank categories that defeated the hero most frequently
+      const rankedThreats = [];
+      for (let c = 8; c >= 0; c--) {
+        if (oppCategories[c] > 0) {
+          rankedThreats.push({ cat: c, count: oppCategories[c], pct: (oppCategories[c] / totalLosses) * 100 });
+        }
+      }
+      rankedThreats.sort((a, b) => b.count - a.count);
+
+      const topThreatName = rankedThreats.length > 0 ? HAND_CATEGORIES[rankedThreats[0].cat] : 'kombinasi lebih tinggi';
+      summary.innerHTML = `Dari <span class="font-bold text-white">${lossRate.toFixed(1)}%</span> peluang kalah melawan <span class="font-bold text-amber-300">${state.opponents} lawan</span>, ancaman kekalahan terbesar datang ketika salah satu lawan berhasil melengkapi <span class="font-bold text-rose-300 underline underline-offset-2">${topThreatName}</span>.`;
+
+      // Render top 3 threat categories bars
+      rankedThreats.slice(0, 3).forEach(threat => {
+        const row = document.createElement('div');
+        row.className = 'space-y-0.5';
+        row.innerHTML = `
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="text-rose-200/90 font-medium">Lawan membentuk <strong>${HAND_CATEGORIES[threat.cat]}</strong></span>
+            <span class="font-mono font-bold text-rose-300">${threat.pct.toFixed(1)}% dari kekalahan</span>
+          </div>
+          <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-rose-950">
+            <div class="h-full bg-rose-500 rounded-full" style="width: ${threat.pct}%"></div>
+          </div>
+        `;
+        threatsContainer.appendChild(row);
+      });
+
+      // Render specific scenario examples
+      if (killerExamples && killerExamples.length > 0) {
+        killerExamples.slice(0, 3).forEach(ex => {
+          const c1 = formatCardBadge(ex.oppCards[0]);
+          const c2 = formatCardBadge(ex.oppCards[1]);
+          const oppHandName = HAND_CATEGORIES[ex.opponentCat];
+          const heroHandName = HAND_CATEGORIES[ex.heroCat];
+
+          // Check if board was incomplete and new community cards were drawn
+          let runoutText = '';
+          if (ex.newBoardCards && ex.newBoardCards.length > 0) {
+            const drawnBadges = ex.newBoardCards.map(c => formatCardBadge(c)).join(' ');
+            const cardStageName = ex.newBoardCards.length === 1 ? 'River' : 'Board Lanjutan';
+            runoutText = `<div class="text-[11px] text-amber-200/90 font-medium mt-0.5">Jika ${cardStageName} keluar: ${drawnBadges}</div>`;
+          }
+
+          const item = document.createElement('div');
+          item.className = 'p-2.5 rounded-xl bg-slate-950/80 border border-rose-900/40 text-[11px] leading-snug space-y-1.5';
+          item.innerHTML = `
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-rose-400 font-bold">Lawan memegang</span>
+              <div class="inline-flex items-center">${c1} ${c2}</div>
+            </div>
+            ${runoutText}
+            <div class="text-slate-200">
+              Membentuk <strong class="text-amber-300 font-bold">${oppHandName}</strong> yang mengungguli <span class="text-slate-300 underline underline-offset-2">${heroHandName}</span> Anda.
+            </div>
+          `;
+          examplesContainer.appendChild(item);
+        });
+      } else {
+        examplesContainer.innerHTML = `<div class="text-[11px] text-slate-500 italic">Menganalisis skenario kartu...</div>`;
+      }
+    }
+
+    function renderDistributionBars(distributions, total) {
+      const container = document.getElementById('handRankingsList');
+      container.innerHTML = '';
+
+      for (let cat = 8; cat >= 0; cat--) {
+        const count = distributions[cat] || 0;
+        const pct = ((count / total) * 100).toFixed(1);
+        const name = HAND_CATEGORIES[cat];
+
+        const row = document.createElement('div');
+        row.className = 'space-y-0.5';
+        row.innerHTML = `
+          <div class="flex justify-between items-center text-slate-300">
+            <span class="font-medium text-[11px]">${name}</span>
+            <span class="font-mono font-bold text-amber-300 text-[11px]">${pct}%</span>
+          </div>
+          <div class="w-full bg-slate-950 h-1 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-amber-400 to-emerald-400 transition-all duration-300" style="width: ${pct}%"></div>
+          </div>
+        `;
+        container.appendChild(row);
+      }
+    }
+
+    function resetMetrics() {
+      document.getElementById('winRateVal').innerText = '0.0%';
+      document.getElementById('tieRateVal').innerText = '0.0%';
+      document.getElementById('lossRateVal').innerText = '100%';
+      document.getElementById('winBar').style.width = '0%';
+      document.getElementById('tieBar').style.width = '0%';
+      document.getElementById('lossBar').style.width = '100%';
+      document.getElementById('equityAgainstOdds').innerText = '0.0%';
+      document.getElementById('decisionBadge').className = 'px-2.5 py-1 rounded-lg font-black uppercase bg-slate-800 text-slate-400';
+      document.getElementById('decisionBadge').innerText = 'Pilih Kartu';
+      document.getElementById('lossRateTag').innerText = 'Kalah: 0%';
+      document.getElementById('lossAnalysisSummary').innerText = 'Pilih 2 kartu tangan Anda untuk memulai analisis ancaman kombinasi kartu lawan.';
+      document.getElementById('threatHandTypesContainer').innerHTML = '';
+      document.getElementById('threatExamplesList').innerHTML = '<div class="text-[11px] text-slate-500 italic">Belum ada simulasi.</div>';
+      renderDistributionBars(new Array(9).fill(0), 1);
+    }
+
+    function updatePotOddsAndEV() {
+      const pot = parseFloat(document.getElementById('potSizeInput').value) || 0;
+      const call = parseFloat(document.getElementById('callSizeInput').value) || 0;
+
+      const potOddsBadge = document.getElementById('potOddsPercent');
+      const equityBadge = document.getElementById('equityAgainstOdds');
+      const decisionBadge = document.getElementById('decisionBadge');
+
+      if (call <= 0) {
+        potOddsBadge.innerText = '0.0%';
+        equityBadge.innerText = `${state.lastCalculatedEquity.toFixed(1)}%`;
+        decisionBadge.className = 'px-2.5 py-1 rounded-lg font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+        decisionBadge.innerText = 'FREE CHECK';
+        return;
+      }
+
+      const potOdds = (call / (pot + call)) * 100;
+      potOddsBadge.innerText = `${potOdds.toFixed(1)}%`;
+      equityBadge.innerText = `${state.lastCalculatedEquity.toFixed(1)}%`;
+
+      if (state.hero[0] === null || state.hero[1] === null) {
+        decisionBadge.className = 'px-2.5 py-1 rounded-lg font-black uppercase bg-slate-800 text-slate-400';
+        decisionBadge.innerText = 'Pilih Kartu';
+        return;
+      }
+
+      // Equity vs Pot Odds Decision
+      if (state.lastCalculatedEquity >= potOdds) {
+        const diff = (state.lastCalculatedEquity - potOdds).toFixed(1);
+        decisionBadge.className = 'px-2.5 py-1 rounded-lg font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg';
+        decisionBadge.innerText = `+EV CALL (+${diff}%)`;
+      } else {
+        const diff = (potOdds - state.lastCalculatedEquity).toFixed(1);
+        decisionBadge.className = 'px-2.5 py-1 rounded-lg font-black uppercase bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-lg';
+        decisionBadge.innerText = `-EV FOLD (-${diff}%)`;
+      }
+    }
+
+    /* ============================================================
+       INITIALIZATION & EVENT BINDINGS
+       ============================================================ */
+    window.addEventListener('DOMContentLoaded', () => {
+      // Initialize slots UI
+      for (let i = 0; i < 2; i++) renderSlot('hero', i);
+      for (let i = 0; i < 5; i++) renderSlot('board', i);
+      resetMetrics();
+
+      // Opponents slider
+      const oppSlider = document.getElementById('opponentsInput');
+      const oppBadge = document.getElementById('opponentsCountBadge');
+      oppSlider.addEventListener('input', (e) => {
+        state.opponents = parseInt(e.target.value, 10);
+        oppBadge.innerText = `${state.opponents} Lawan`;
+        runCalculation();
+      });
+
+      // Pot Odds Inputs
+      document.getElementById('potSizeInput').addEventListener('input', updatePotOddsAndEV);
+      document.getElementById('callSizeInput').addEventListener('input', updatePotOddsAndEV);
+
+      // Close modal on Escape
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closePickerModal();
+      });
+    });
+  </script>
 </body>
 </html>
